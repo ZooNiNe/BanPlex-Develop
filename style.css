@@ -1,0 +1,2469 @@
+/* =======================================================
+ * BanPlex Styles - v9.0 Progressive App
+ * ======================================================= */
+ :root {
+  --bg-start: #f0f4f8;
+  --bg-end: #d9e2ec;
+  --panel: #ffffff;
+  --surface-muted: #f8fafc;
+  --text: #000000;
+  --text-dim: #64748b;
+  --line: #e2e8f0;
+  --primary: #0ea5e9;
+  --info: #10b981;
+  --grad: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warn: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+  --spacing: 1rem;
+  --transition-base: 250ms cubic-bezier(.4,0,.2,1);
+  --grad-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  /* Design tokens for consistency */
+  --font-xs: .75rem;
+  --font-sm: .8rem;
+  --font-md: .9rem;
+  --font-lg: 1rem;
+  --icon-sm: 18px;
+  --icon-md: 22px;
+  --icon-lg: 24px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-image: url('background-image.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--text);
+  font-size: 14px; 
+  line-height: 1.5;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Normalize icon sizing for consistent look */
+.material-symbols-outlined { font-size: var(--icon-md); line-height: 1; }
+
+html, body { height: 100%; }
+#app-shell { display: flex; min-height: 100svh; }
+.content-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; padding-bottom: 0; }
+.content-wrapper::before,
+.content-wrapper::after {
+  content: ""; position: fixed; z-index: 0; pointer-events: none; filter: blur(40px); opacity: .25;
+}
+.content-wrapper::before { top: -80px; right: -60px; width: 260px; height: 260px; background: radial-gradient(closest-side, rgba(14,165,233,.6), transparent 70%); }
+.content-wrapper::after { bottom: -100px; left: -80px; width: 300px; height: 300px; background: radial-gradient(closest-side, rgba(16,185,129,.5), transparent 70%); }
+
+.page-container { padding: var(--spacing); position: relative; overscroll-behavior-y: contain;     overflow-y: auto; /* <-- TAMBAHKAN BARIS INI */
+  -webkit-overflow-scrolling: touch; /* Opsional: Membuat scroll lebih mulus di iOS */
+  flex: 1; min-height: 0;
+  padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+}
+
+.toolbar { display: flex; gap: .5rem; align-items: center; margin: .5rem var(--spacing) .5rem var(--spacing); position: relative; z-index: 1; padding: 0; }
+.toolbar.sticky-toolbar { position: sticky; top: 0; background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6)); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); padding: .5rem var(--spacing); margin: 0 -.5rem .5rem -.5rem; z-index: 5; }
+.dark-theme .toolbar.sticky-toolbar { background: linear-gradient(180deg, rgba(15,23,42,0.9), rgba(15,23,42,0.7)); }
+.toolbar .search { flex: 1; display: flex; align-items: center; gap: .45rem; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 999px; padding: .5rem .75rem; min-height: 40px; height: 40px; box-shadow: var(--shadow-sm); transition: box-shadow .2s ease; }
+.toolbar .search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+.toolbar .search .material-symbols-outlined { color: var(--text-dim); font-size: 22px; }
+.toolbar .search input { border: none; outline: none; width: 100%; background: transparent; font-size: .9rem; color: var(--text); }
+.toolbar .search input::placeholder { color: var(--text-dim); }
+.toolbar .icon-btn { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-muted); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform .15s ease, background-color .15s ease, color .15s ease; position: relative; color: var(--text-dim); }
+.toolbar .icon-btn:hover { transform: translateY(-2px); background: #f1f5f9; color: var(--text); }
+.toolbar .icon-btn:active { transform: scale(0.95); }
+.toolbar .icon-btn .material-symbols-outlined { font-size: 22px; transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.toolbar .icon-btn.active { background-color: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); border-color: var(--primary); }
+.toolbar .icon-btn.animating .material-symbols-outlined { transform: rotate(360deg); }
+
+
+/* Micro-interactions & Transitions */
+.btn, .btn-icon, .nav-item, .card { transition: transform .15s ease, box-shadow .15s ease, background-color .2s ease, opacity .2s ease; }
+.btn:active, .btn-icon:active, .nav-item:active { transform: scale(0.98); }
+.fade-in { animation: fadeIn .25s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Badge Styles */
+.badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .65rem; padding: .15rem .4rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-muted); color: var(--text-dim); }
+.badge.material { color: #065f46; border-color: #a7f3d0; background: #ecfdf5; }
+.badge.operasional { color: #1e3a8a; border-color: #bfdbfe; background: #eff6ff; }
+.badge.lainnya { color: #6b21a8; border-color: #e9d5ff; background: #faf5ff; }
+
+/* Form Elements */
+select, .custom-select-trigger { min-height: 40px; height: 40px; padding: .5rem .75rem; border-radius: var(--radius-sm); font-size: 0.85rem; line-height: 1.2; }
+select { appearance: none; -webkit-appearance: none; background-color: var(--surface-muted); border: 1px solid var(--line); color: var(--text); }
+.form-group > select, .form-group > .custom-select-trigger { width: 100%; }
+
+/* Bottom Navigation */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; height: calc(65px + env(safe-area-inset-bottom, 0px)); background-color: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--line); box-shadow: 0 -2px 10px rgba(0,0,0,.03); display: flex; justify-content: space-around; padding: 0 .5rem env(safe-area-inset-bottom, 0px) .5rem; }
+.bottom-nav .nav-item { font-size: 0.75rem; gap: 4px; color: var(--text-dim); position: relative; display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: center; font-weight: 500; border: none; background: none; cursor: pointer; padding: 0.5rem 0.25rem; transition: color var(--transition-base); }
+.bottom-nav .nav-item .material-symbols-outlined { font-size: 24px; }
+.bottom-nav .nav-item.active { color: var(--primary); }
+.bottom-nav .nav-item.active .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+.nav-item .notification-badge { position: absolute; top: 4px; right: 22px; background-color: var(--danger); color: white; width: 16px; height: 16px; border-radius: 50%; font-size: 0.6rem; font-weight: 700; display: flex; justify-content: center; align-items: center; border: 2px solid var(--panel); }
+
+/* Dashboard Specific Styles */
+.dashboard-balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing); margin-bottom: 1.5rem; }
+.dashboard-balance-card { position: relative; background-color: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: .75rem; display: flex; flex-direction: column; gap: 0.35rem; justify-content: center; min-height: 36px; }
+.dashboard-balance-card.clickable { cursor: pointer; }
+.dashboard-balance-card.clickable:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.dashboard-balance-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; background-image: var(--grad); opacity: .25; }
+.dashboard-balance-card .label { font-size: 0.6rem; color: var(--text-dim); font-weight: 500; }
+.dashboard-balance-card .value { font-size: 0.9rem; font-weight: 700; line-height: 1.2; color: var(--text) !important; overflow-wrap: break-word; word-break: break-all; }
+.dashboard-actions-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; padding: 0; margin-bottom: 1.5rem; }
+.dashboard-action-item { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; background: none; border: none; padding: 0; }
+.dashboard-action-item .icon-wrapper { width: 56px; height: 56px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); color: var(--text); display: flex; align-items: center; justify-content: center; margin-bottom: .35rem; transition: background-color 0.2s, transform .15s ease; }
+.dashboard-action-item:hover .icon-wrapper { background-color: #f8fafc; }
+.dashboard-action-item .icon-wrapper .material-symbols-outlined { font-size: 24px; }
+.dashboard-action-item .label { font-weight: 500; font-size: 0.6rem; color: var(--text); line-height: 1.3; word-break: break-word; }
+.dashboard-action-item.action-item-extra { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.actions-collapsed .action-item-extra { opacity: 0; transform: scale(0.8); max-height: 0; padding: 0; margin: 0; overflow: hidden; pointer-events: none; font-size: 0; }
+.budget-item { padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+.budget-item:first-child { padding-top: 0; }
+.budget-item:last-child { border-bottom: none; padding-bottom: 0; }
+.budget-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+.budget-info .project-name { font-weight: 600; font-size: 0.85rem; }
+.budget-info .remaining-amount { font-weight: 700; font-size: 0.9rem; }
+.budget-info .remaining-amount.negative { color: var(--danger); }
+.progress-bar-container { height: 6px; width: 100%; background-color: var(--surface-muted); border-radius: 3px; overflow: hidden; margin-bottom: 0.4rem; }
+.progress-bar { height: 100%; border-radius: 3px; transition: width var(--transition-base); background-image: var(--grad); }
+.budget-details { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
+.daily-recap-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; }
+.daily-recap-item:first-child { padding-top: 0; }
+.daily-recap-item:last-child { border-bottom: none; padding-bottom: 0; }
+.daily-recap-item strong { font-weight: 600; }
+
+/* Page Header & General Layout */
+.page-label { position: static; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem var(--spacing) .25rem var(--spacing); flex-wrap: wrap; }
+.page-label .title-group { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.page-label .app-name { font-weight: 700; letter-spacing: .2px; font-size: var(--font-lg); }
+.page-label .page-name { font-size: var(--font-sm); color: var(--text-dim); margin-top: .1rem; }
+.page-label .header-right { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1; justify-content: flex-end; }
+#breadcrumb-container { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.section-title-owner { font-size: 0.9rem; margin: 1.5rem 0 1rem 0; font-weight: 600; color: var(--text-dim); }
+
+/* Settings & Profile */
+.settings-list { display: flex; flex-direction: column; gap: .5rem; }
+.settings-list-item { display: flex; align-items: center; gap: 1rem; background-color: var(--panel); padding: .8rem 1rem; border-radius: var(--radius); border: 1px solid var(--line); cursor: pointer; transition: background-color 0.2s, transform 0.2s; }
+.settings-list-item:hover { background-color: var(--surface-muted); transform: scale(1.02); }
+.settings-list-item .icon-wrapper { width: 40px; height: 40px; flex-shrink: 0; background-color: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.settings-list-item .icon-wrapper .material-symbols-outlined { font-size: 22px; }
+.settings-list-item .label { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+.profile-card-settings { background-color: var(--panel); border-radius: var(--radius-lg); padding: 1.25rem; border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 1.5rem; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 1rem; object-fit: cover; }
+.profile-card-settings .profile-name { font-size: 1rem; font-weight: 600; }
+.profile-card-settings .profile-email { font-size: 0.8rem; color: var(--text-dim); }
+.profile-role-badge { margin-top: 0.5rem; background-image: var(--grad); color: #fff; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+.profile-actions { margin-top: 1rem; }
+
+/* Buttons */
+.btn { padding: .5rem 1rem; font-size: var(--font-sm); border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; transition: all .2s ease; border: 1px solid transparent; }
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+.btn-primary { background: var(--grad); color: #fff; box-shadow: var(--shadow-md); }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-secondary { background: var(--surface-muted); color: var(--text); border-color: var(--line); }
+.btn-secondary:hover { background-color: var(--line); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-icon { background: none; border: none; padding: .4rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-dim); transition: background-color .2s, color .2s; }
+.btn-icon:hover { background-color: var(--surface-muted); color: var(--text); }
+.btn-icon-danger:hover { background-color: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+.btn-icon-success:hover { background-color: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+
+/* Cards & Forms */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.card.clickable:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.card-pad { padding: var(--spacing); }
+.form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: .25rem;}
+label { font-size: .8rem; font-weight: 500; color: var(--text-dim); }
+input, select, textarea { width: 100%; background: var(--surface-muted); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .5rem .75rem; font-family: 'Inter', sans-serif; font-size: 0.85rem; appearance: none; -webkit-appearance: none; }
+.custom-select-trigger { background: var(--surface-muted) !important; border: 1px solid var(--line) !important; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+.hidden { display: none !important; }
+input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modals */
+.modal-bg { position: fixed; inset: 0; display: flex; justify-content: center; align-items: flex-end; z-index: 1200; opacity: 0; transition: opacity .3s; pointer-events: none; background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.modal-bg.show { opacity: 1; pointer-events: auto; }
+.modal-content { width: 100%; max-height: 95vh; min-height: 150px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: #fdfdfd; box-shadow: var(--shadow-lg); transform: translateY(100%); transition: transform .3s; display: flex; flex-direction: column; }
+.modal-bg.show .modal-content { transform: translateY(0); }
+.modal-header { padding: .8rem 1.25rem; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h4 { font-size: 1rem; margin: 0; }
+.modal-body { overflow-y: auto; padding: 1.25rem; }
+.modal-footer { padding: .8rem 1rem; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: .5rem; }
+.confirm-modal-text { text-align: center; font-size: 0.9rem; line-height: 1.6; padding: 0.5rem 0; color: var(--text-dim); }
+.confirm-modal-text strong { color: var(--text); font-weight: 600; }
+
+/* Toast/Popup */
+.popup-container { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 2000; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; width: auto; max-width: calc(100% - 2rem); }
+.popup-container.show { top: 1rem; }
+.popup-content { padding: 0.7rem 1.25rem; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.75rem; border-radius: 999px; color: #000; background-color: #ffffff; box-shadow: var(--shadow-lg); pointer-events: auto; white-space: nowrap; }
+.popup-content .material-symbols-outlined { font-size: 1.25rem; }
+.popup-content .spinner { width: 1.25rem; height: 1.25rem; border-width: 2px; }
+.popup-content p { margin: 0; }
+.popup-container.popup-success .popup-content .material-symbols-outlined { color: var(--success); }
+.popup-container.popup-error .popup-content .material-symbols-outlined { color: var(--danger); }
+.popup-container.popup-warn .popup-content .material-symbols-outlined { color: var(--warn); }
+
+/* Loaders & Spinners */
+.spinner { width: 1em; height: 1em; border: 2px solid rgba(0, 0, 0, .2); border-top-color: #000; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-container { padding: 2rem; display: flex; justify-content: center; }
+.global-loader { position: fixed; inset: 0; background-color: #ffffff; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.loader-content { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.loader-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #e5e7eb; border-top-color: var(--primary); animation: spin 1s linear infinite; }
+
+/* Sub Navigation / Tabs */
+.sub-nav { display: flex; margin: .25rem var(--spacing) .75rem var(--spacing); }
+
+/* List Item Cards */
+.card-list-item { padding: .65rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: .5rem; }
+.card-list-item-content { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; cursor: pointer; gap: 1rem; }
+.card-list-item-details { flex: 1; min-width: 0; }
+.card-list-item-details .category-badge {
+  margin-top: 0.5rem;
+  display: inline-block;
+  }
+  .sub-nav,
+  .category-sub-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin: 0 var(--spacing) 1rem var(--spacing);
+      padding: 0; 
+      overflow-x: auto; 
+      flex-wrap: nowrap; 
+      align-items: center;
+      -webkit-overflow-scrolling: touch; 
+      scrollbar-width: none; 
+      -ms-overflow-style: none;
+  }
+
+  /* Two main tabs (equal width, centered) */
+  .sub-nav.two-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      overflow: visible;
+  }
+  .sub-nav.two-tabs .sub-nav-item { width: 100%; }
+  
+  .sub-nav::-webkit-scrollbar,
+  .category-sub-nav::-webkit-scrollbar {
+      display: none;
+  }
+  
+  /* 2. Ubah setiap item menjadi "pil" dengan background sendiri */
+   .sub-nav-item {
+       flex-shrink: 0; 
+       text-align: center;
+       padding: .3rem 1rem; 
+       border: 1px solid var(--line); /* Beri garis tepi tipis */
+       background-color: var(--surface-muted); /* Latar belakang default untuk pil */
+       cursor: pointer;
+       font-weight: 600;
+       color: var(--text-dim);
+       border-radius: 999px; /* Membuat bentuk pil yang sempurna */
+       transition: all .2s ease-in-out;
+       font-size: 0.8rem;
+       white-space: nowrap;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       gap: 0.4rem;
+   }
+  
+  .sub-nav-item .material-symbols-outlined {
+      font-size: 18px;
+  }
+  
+  /* 3. Atur hover state */
+  .sub-nav-item:hover {
+      border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+      color: var(--primary);
+  }
+  
+  /* 4. Atur style untuk tab yang aktif */
+  .sub-nav-item.active {
+      background-color: var(--primary); /* Warna latar utama saat aktif */
+      color: #fff; /* Teks menjadi putih */
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+  }
+
+/* Category sub nav inherits pills; add slight tone */
+.category-sub-nav .sub-nav-item { background-color: color-mix(in srgb, var(--surface-muted) 70%, transparent); }
+.dark-theme .category-sub-nav .sub-nav-item { background-color: color-mix(in srgb, var(--surface-muted) 90%, transparent); }
+
+/* Header right group cleanup */
+.sync-indicator { white-space: nowrap; }
+
+/* Mobile refinements */
+@media (max-width: 480px) {
+  .page-label { padding: .5rem var(--spacing) .25rem var(--spacing); gap: .5rem; }
+  .page-label .app-name { font-size: 1rem; }
+  .page-label .page-name { font-size: .78rem; }
+  .page-label .header-right { width: 100%; justify-content: space-between; }
+  .toolbar.sticky-toolbar { padding: .5rem var(--spacing); }
+  .toolbar .icon-btn { width: 38px; height: 38px; }
+  .toolbar .search { min-height: 38px; height: 38px; }
+}
+.card-list-item-title { font-size: 0.85rem; font-weight: 600; margin: 0; line-height: 1.4; word-break: break-word; }
+.card-list-item-subtitle { font-size: 0.7rem; color: var(--text-dim); margin-top: .1rem; }
+.card-list-item-amount-wrapper { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; text-align: right; }
+.card-list-item-amount { font-size: 0.9rem; font-weight: 700; color: var(--primary); white-space: nowrap; }
+.paid-indicator, .card-list-item-repayment-info { display: flex; align-items: center; justify-content: flex-end; gap: .25rem; font-size: 0.75rem; margin-top: .1rem; font-weight: 500; }
+.paid-indicator { color: var(--success); }
+.paid-indicator .material-symbols-outlined { font-size: 1rem; font-variation-settings: 'FILL' 1; }
+
+/* Master Data & User Management Lists */
+.master-data-list { display: flex; flex-direction: column; gap: .5rem; }
+.master-data-item { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; background-color: var(--surface-muted); border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.master-data-item-info { display: flex; align-items: center; gap: .5rem; flex-grow: 1; min-width: 0; }
+.master-data-item-info span { font-weight: 500; word-break: break-word; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.master-data-item-actions { display: flex; flex-shrink: 0; }
+.master-data-item .user-info-container { display: flex; flex-direction: column; gap: 2px; }
+.master-data-item .user-email { font-size: 0.75rem; color: var(--text-dim); }
+.master-data-item .user-badges { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.user-badge { padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: capitalize; line-height: 1.4; }
+.user-badge.role-owner { background-color: #e0f2fe; color: #0369a1; }
+.user-badge.role-editor { background-color: #fef9c3; color: #a16207; }
+.user-badge.role-viewer { background-color: #f3f4f6; color: #4b5563; }
+.user-badge.status-active { background-color: #dcfce7; color: #16a34a; }
+.user-badge.status-pending { background-color: #fee2e2; color: #dc2626; }
+.category-badge { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 6px; color: var(--text); background-color: var(--line); flex-shrink: 0; font-weight: 500; }
+.category-badge.category-main { background-color: #dcfce7; color: #16a34a; }
+.category-badge.category-internal { background-color: #e0e7ff; color: #4338ca; }
+
+/* Custom Select Dropdown */
+.master-data-select { display: flex; align-items: center; gap: .5rem; }
+.master-data-select .custom-select-wrapper { flex-grow: 1; }
+.custom-select-wrapper { position: relative; }
+.custom-select-trigger { width: 100%; display: flex; justify-content: space-between; align-items: center; cursor: pointer; text-align: left; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.custom-select-trigger span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.custom-select-wrapper.active .custom-select-trigger { border-color: var(--primary); }
+.custom-select-options { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md); }
+.custom-select-wrapper.active .custom-select-options { display: block; }
+.custom-select-option { padding: .6rem .8rem; cursor: pointer; transition: background-color .2s; }
+.custom-select-option:hover { background-color: var(--surface-muted); }
+
+/* Action Menu (More Options) */
+.actions-menu { position: fixed; background-color: var(--surface-muted); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); overflow: hidden; min-width: 150px; animation: fade-in-sm .15s ease; z-index: 1201; }
+@keyframes fade-in-sm { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+.actions-menu-item { display: flex; align-items: center; gap: .75rem; padding: .6rem 1rem; background: none; border: none; width: 100%; text-align: left; color: var(--text); cursor: pointer; transition: background-color .2s; }
+.actions-menu-item:hover { background-color: var(--line); }
+.actions-menu-item .material-symbols-outlined { font-size: 20px; color: var(--text-dim); }
+.actions-modal-header { text-align: center; padding: 1rem 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.actions-modal-header h4 { font-size: 1rem; margin: 0; word-break: break-word; }
+.actions-modal-header span { font-size: 0.8rem; color: var(--text-dim); display: block; margin-top: 0.25rem; }
+.actions-modal-header strong { font-size: 1.25rem; color: var(--primary); display: block; margin-top: 0.5rem; }
+.actions-modal-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* Detail Lists & Summaries */
+.detail-list { display: flex; flex-direction: column; }
+.detail-list div { display: flex; justify-content: space-between; align-items: flex-start; padding: .9rem 0; border-bottom: 1px solid var(--line); gap: 1rem; flex-wrap: wrap; }
+.detail-list div:last-child { border-bottom: none; }
+.detail-list dt { font-size: 0.85rem; color: var(--text-dim); word-break: break-word; overflow-wrap: anywhere; }
+.detail-list dd { font-size: 0.85rem; font-weight: 600; text-align: right; word-break: break-word; overflow-wrap: anywhere; }
+.status-badge { padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.status-badge.positive { color: #15803d; background-color: #dcfce7; }
+.status-badge.negative { color: #b91c1c; background-color: #fee2e2; }
+
+/* Payment & Invoice Modals */
+.payment-summary { padding: 0; margin-bottom: 2rem; background-color: transparent; }
+.payment-summary div { font-size: 0.9rem; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
+.payment-summary strong { font-size: 0.9rem; }
+.payment-summary .remaining { font-size: 1rem; font-weight: 600; }
+.payment-summary .remaining strong { font-size: 1.15rem; font-weight: 700; color: var(--warn); }
+.loan-calculation-result { margin-top: 1rem; padding: 0.75rem 1rem; background-color: var(--surface-muted); border-radius: var(--radius-sm); text-align: center; font-weight: 500; display: none; }
+.loan-calculation-result .label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.25rem; }
+.loan-calculation-result .amount { font-size: 1.25rem; font-weight: 600; color: var(--primary); }
+.invoice-section-title, .detail-section-title { font-size: 1rem; font-weight: 600; color: var(--text-dim); margin: 2rem 0 1rem 0; padding-bottom: .5rem; border-bottom: 1px solid var(--line); }
+#invoice-items-container { display: flex; flex-direction: column; gap: 0.75rem; }
+.readonly-input { background-color: var(--line); cursor: not-allowed; }
+.invoice-item-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background-color: var(--surface-muted); }
+.invoice-item-row .item-name { grid-column: 1 / -1; }
+.invoice-item-row .item-details { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.5rem; }
+.invoice-item-row .item-price { flex: 1; }
+.invoice-item-row .item-qty { width: 60px; }
+.invoice-item-row .item-total { grid-column: 1 / 2; align-self: center; font-weight: 700; font-size: 1rem; color: var(--primary); }
+.invoice-item-row .remove-item-btn { grid-column: 2 / 3; align-self: center; justify-self: end; }
+.add-item-action { text-align: left; margin-top: 0.5rem; }
+.add-item-action .btn-icon { color: var(--primary); }
+.add-item-action .btn-icon .material-symbols-outlined { font-size: 2rem; }
+.invoice-total { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 600; margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--line); }
+.invoice-total strong { color: var(--primary); font-size: 1.25rem; }
+
+/* Detail Modals Layout */
+.detail-modal-header { padding: 1rem 1.25rem; text-align: center; }
+.detail-modal-header h4 { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); margin: 0 0 0.5rem 0; }
+.detail-modal-header strong { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+.detail-modal-body { padding: 0.5rem 1.25rem 1.25rem 1.25rem; }
+.invoice-detail-list { padding: 0.5rem 1.25rem; }
+.invoice-detail-item { padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+.invoice-detail-item:last-child { border-bottom: none; }
+.item-main-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; flex-wrap: wrap; gap: .25rem .5rem; }
+.item-name { font-size: 0.85rem; font-weight: 500; word-break: break-word; }
+.item-total { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.item-sub-info { font-size: 0.75rem; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: .25rem .5rem; }
+.invoice-detail-summary { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; margin-top: 0.5rem; font-weight: 600; }
+
+/* Attachments */
+.attachment-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem; }
+.attachment-item { position: relative; text-align: center; gap: .5rem; }
+.attachment-item span { font-size: .8rem; font-weight: 500; display: block; margin-top: .5rem; }
+.attachment-thumbnail { width: 100%; height: 100px; object-fit: cover; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--line); }
+.attachment-actions { position: absolute; top: 4px; right: 4px; }
+.attachment-actions .btn-icon-danger { background-color: rgba(0,0,0,0.5); color: white; }
+.image-view-modal { position: fixed; inset: 0; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; padding: 1rem; }
+.image-view-modal img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.image-view-close { position: absolute; top: 1rem; right: 1rem; background-color: rgba(255,255,255,0.2); color: white; }
+
+/* Reports & Recap */
+.report-title { font-size: 1.2rem; margin-bottom: 1rem; }
+.detail-list dd.positive, .recap-table td.positive { color: var(--success); }
+.detail-list dd.negative, .recap-table td.negative { color: var(--danger); }
+.detail-list .summary-row { background-color: var(--surface-muted); margin: .5rem -1.25rem; padding: .8rem 1.25rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.detail-list .summary-row dt, .detail-list .summary-row dd { font-weight: 700; }
+.detail-list .summary-row.final { font-size: 1.1rem; }
+.detail-list .category-title { background: none; border: none; padding-top: 1.5rem; padding-bottom: 0; }
+.detail-list .category-title dt { font-weight: 700; font-size: 1rem; color: var(--text); }
+.rekap-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1.5rem; }
+.rekap-actions .btn-primary { grid-column: 1 / -1; }
+.rekap-filters { display: flex; flex-wrap: wrap; gap: var(--spacing); align-items: flex-end; }
+.rekap-filters .form-group { margin-bottom: 0; flex-grow: 1; }
+.recap-table-wrapper { overflow-x: auto; }
+.recap-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.recap-table th, .recap-table td { padding: .75rem; text-align: left; border-bottom: 1px solid var(--line); }
+.recap-table th { font-weight: 600; color: var(--text-dim); font-size: .85rem; }
+.recap-table td { vertical-align: middle; }
+.recap-table tr:last-child td { border-bottom: none; }
+.recap-table strong { color: var(--primary); }
+.recap-actions-cell { display: flex; gap: 0.5rem; }
+
+/* Attendance */
+.attendance-header { display: flex; flex-wrap: nowrap; gap: .75rem; margin-bottom: 1.25rem; }
+.attendance-header .btn { flex: 1; padding: .5rem; font-size: .8rem; }
+.attendance-header .btn .material-symbols-outlined { font-size: 18px; }
+.attendance-controls { margin-bottom: 1.25rem; }
+.attendance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: calc(var(--spacing) * 0.75); }
+.attendance-card { padding: var(--spacing); display: flex; flex-direction: column; gap: .75rem; }
+.attendance-worker-info { display: flex; flex-direction: column; }
+.attendance-worker-info strong { font-size: 1.05rem; font-weight: 600; }
+.attendance-worker-info span { font-size: 0.85rem; color: var(--text-dim); }
+.attendance-worker-info .worker-wage { font-size: 0.85rem; color: var(--primary); font-weight: 500; margin-top: 0.25rem; }
+.attendance-actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.attendance-status { font-size: 0.85rem; font-weight: 500; color: var(--text-dim); flex-grow: 1; }
+.attendance-status.checked-in { color: var(--primary); }
+.attendance-status.completed { color: var(--text); font-weight: 600; }
+.manual-attendance-item { padding: 0.75rem 1rem; margin-bottom: .75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 1rem; }
+.manual-attendance-item .worker-info { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
+.manual-attendance-item .worker-info strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.manual-attendance-item .worker-info .worker-wage { font-size: .8rem; color: var(--text-dim); }
+.attendance-status-selector { display: flex; gap: .5rem; flex-shrink: 0; }
+.attendance-status-selector label { display: flex; align-items: center; gap: .4rem; cursor: pointer; font-size: .85rem; padding: .4rem .6rem; border: 1px solid var(--line); border-radius: var(--radius-sm); transition: background-color .2s, border-color .2s; }
+.attendance-status-selector input[type="radio"] { display: none; }
+.attendance-status-selector input[type="radio"]:checked + span { color: var(--primary); font-weight: 600; }
+.attendance-status-selector label:has(input:checked) { background-color: color-mix(in srgb, var(--primary) 10%, transparent); border-color: var(--primary); }
+.form-footer-actions { margin-top: 1.5rem; position: sticky; bottom: 0; background: none; padding: 1rem 0; border-top: none; box-shadow: none; display: flex; justify-content: center; }
+
+/* Logs */
+.log-container { display: flex; flex-direction: column; gap: .75rem; }
+.log-item { background-color: var(--panel); padding: .75rem 1rem; border-radius: var(--radius-sm); border-left: 4px solid var(--primary); }
+.log-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .25rem; }
+.log-user { font-weight: 600; }
+.log-time { font-size: .8rem; color: var(--text-dim); }
+.log-action { margin: 0; }
+
+/* Pull To Refresh */
+.ptr { position: fixed; top: 0; left: 0; right: 0; min-height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; color: var(--text-dim); transition: transform .15s ease-out; pointer-events: none; z-index: 1001; transform: translateY(-70px); }
+.ptr .ptr-spinner { width: 22px; height: 22px; border: 3px solid rgba(0,0,0,.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.9s linear infinite; opacity: 0; }
+.ptr.ptr-ready .ptr-spinner { opacity: 1; }
+
+#update-notification {
+  position: fixed;
+  bottom: -180px; /* Mulai dari luar layar bawah */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2100; /* Pastikan di atas semua elemen lain */
+  width: auto;
+  max-width: calc(100% - 2rem);
+  transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  visibility: visible;
+}
+
+#update-notification.show {
+  bottom: 80px; /* Muncul di atas menu navigasi bawah */
+}
+
+.update-card {
+  background-color: #2c3e50; /* Warna gelap agar kontras */
+  color: #ecf0f1;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem; /* Jarak antara teks dan tombol */
+  box-shadow: var(--shadow-lg);
+  text-align: left; /* Teks rata kiri */
+}
+
+.update-card .update-info {
+    flex-grow: 1;
+}
+
+.update-card h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.update-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.update-card .btn {
+  background: var(--primary);
+  color: white;
+  flex-shrink: 0; /* Mencegah tombol mengecil */
+  padding: 0.5rem 0.85rem;
+  font-weight: 500;
+}
+
+/* Filter & Sort Modal */
+.filter-modal-body .form-group:last-child { margin-bottom: 0; }
+.filter-modal-footer { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.sort-options { display: flex; flex-direction: column; gap: .5rem; }
+.sort-option { display: flex; align-items: center; gap: .5rem; }
+.sort-option input[type="radio"] { display: none; }
+.sort-option label { flex-grow: 1; padding: .75rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; transition: all .2s ease; }
+.sort-option input[type="radio"]:checked + label { background-color: color-mix(in srgb, var(--primary) 10%, transparent); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+.sort-direction { display: flex; background-color: var(--surface-muted); border-radius: var(--radius-sm); padding: .25rem; border: 1px solid var(--line); }
+.sort-direction button { background: transparent; border: none; padding: .5rem; cursor: pointer; border-radius: 6px; color: var(--text-dim); }
+.sort-direction button.active { background: var(--panel); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+.sidebar {
+  display: none;
+}
+.bottom-nav {
+  display: flex; /* Pastikan ini 'flex' bukan 'none' */
+}
+.content-wrapper {
+  padding-bottom: 75px; /* Beri ruang untuk bottom nav di mobile */
+}
+
+/* Aturan untuk Desktop (Layar lebih lebar dari 768px) */
+@media (min-width: 768px) {
+  .sidebar {
+      display: flex; /* Tampilkan Sidebar */
+      flex-direction: column;
+      width: 240px;
+      background-color: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 1.5rem 1rem;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+  }
+
+  .bottom-nav {
+      display: none !important; /* Sembunyikan Bottom Nav di Desktop */
+  }
+
+  .content-wrapper {
+      padding-bottom: 0; /* Hapus ruang di bawah untuk desktop */
+  }
+}
+
+/* =======================================================
+ * [REVISI FINAL] Tata Letak Global & Konsisten
+ * ======================================================= */
+
+/* 1. Aturan PADDING global untuk semua modal. Ini adalah dasar tata letak. */
+.modal-body {
+    padding: 1.25rem;
+}
+
+/* 2. Aturan untuk elemen yang harus full-width (seperti header/footer di dalam modal). */
+/* Elemen-elemen ini akan "keluar" dari padding .modal-body menggunakan margin negatif. */
+.detail-modal-header,
+.invoice-detail-summary,
+#dataDetail-modal .payment-summary {
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    background-color: var(--surface-muted);
+    border-bottom: 1px solid var(--line);
+}
+
+/* 3. Penyesuaian margin agar elemen full-width menempel sempurna di tepi. */
+.detail-modal-header,
+#dataDetail-modal .payment-summary {
+    margin-top: -1.25rem; /* Menghilangkan ruang kosong di atas. */
+    margin-bottom: 1.5rem; /* Memberi jarak ke konten di bawahnya. */
+}
+
+.detail-modal-header {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+#dataDetail-modal .payment-summary {
+     padding-top: .75rem;
+    padding-bottom: .75rem;
+}
+
+.invoice-detail-summary {
+    margin-top: 1.5rem; /* Beri jarak dari konten di atasnya */
+    margin-bottom: -1.25rem; /* Menghilangkan ruang kosong di bawah. */
+    border-top: 1px solid var(--line);
+    border-bottom: none;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+/* Atur container tombol upload */
+.upload-buttons {
+  display: flex; /* Membuat item di dalamnya sejajar */
+  gap: 0.5rem;   /* Memberi jarak antar tombol */
+  margin-top: 0.25rem; /* Memberi sedikit jarak dari label di atasnya */
+}
+
+/* Atur tombol di dalamnya agar lebarnya sama */
+.upload-buttons .btn {
+  flex: 1; /* Membuat setiap tombol mengambil ruang yang sama */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem; /* Jarak antara ikon dan teks */
+}
+
+/* Sedikit penyesuaian untuk nama file */
+.file-name-display {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background-color: var(--background-alt);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+/* Penyesuaian untuk tombol di dalam modal */
+.modal-upload-buttons {
+  margin-top: 1rem;
+}
+
+/* Style untuk selection bar */
+.selection-bar {
+  position: fixed;
+  bottom: -100px; /* Mulai dari luar layar */
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-color: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+  transition: bottom 0.3s ease-in-out;
+  z-index: 1001; /* Di atas bottom-nav */
+}
+
+.selection-bar.show {
+  bottom: 65px; /* Muncul di atas bottom-nav */
+}
+
+/* Sembunyikan bottom-nav saat mode seleksi aktif */
+body.selection-active .bottom-nav {
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+}
+body.selection-active .selection-bar.show {
+  bottom: 0; /* Jika bottom-nav disembunyikan, tempel di paling bawah */
+}
+
+.selection-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#selection-count {
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+#selection-total {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+#close-selection-btn {
+  color: white;
+}
+
+/* Style untuk kartu yang sedang dipilih */
+.card-list-item.selected {
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid var(--primary);
+  transform: scale(1.02);
+}
+
+/* Style untuk Kartu Ringkasan */
+.summary-card {
+  margin-bottom: 1.5rem;
+  display: none; /* Defaultnya tersembunyi */
+}
+
+.summary-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.summary-grid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-grid .label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.summary-grid strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.summary-grid strong.positive {
+  color: var(--success);
+}
+
+.summary-grid strong.negative {
+  color: var(--danger);
+}
+
+/* === [BARU] Style untuk Jurnal Absensi === */
+
+.jurnal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.jurnal-item {
+  padding: var(--spacing);
+}
+
+.jurnal-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.jurnal-item-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.jurnal-item-actions {
+  text-align: right;
+}
+
+.jurnal-item-actions .btn-sm {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.8rem;
+}
+
+/* Style untuk Rekap Gaji Perorangan di Modal */
+.worker-recap-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: var(--spacing);
+  margin-bottom: 1.5rem;
+  background-color: var(--surface-muted);
+}
+.worker-recap-summary > div {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+.worker-recap-summary .label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+.worker-recap-summary strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.worker-recap-summary .total-gaji {
+  grid-column: 1 / -1; /* Total gaji mengambil lebar penuh */
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.worker-recap-summary .total-gaji strong {
+  color: var(--primary);
+  font-size: 1.4rem;
+}
+
+/* Style untuk daftar detail di rekap perorangan */
+.detail-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.detail-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+.detail-list-item .item-main {
+  display: flex;
+  flex-direction: column;
+}
+.detail-list-item .item-date {
+  font-weight: 600;
+}
+.detail-list-item .item-project {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.detail-list-item .item-secondary {
+  text-align: right;
+}
+.detail-list-item .item-status {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.detail-list-item .item-status.paid { color: var(--success); }
+.detail-list-item .item-status.unpaid { color: var(--warn); }
+
+.detail-list-item .item-amount {
+  font-weight: 700;
+}
+
+/* =======================================================
+ * [BARU] Style untuk Modal Jurnal Harian
+ * ======================================================= */
+
+.jurnal-detail-header {
+  margin-bottom: 1.5rem;
+}
+
+#jurnal-detail-summary {
+  margin-bottom: 1rem;
+}
+
+#jurnal-detail-summary .summary-title {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+#jurnal-detail-summary .summary-total {
+  text-align: center;
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.jurnal-pekerja-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Jarak antar kartu pekerja */
+}
+
+.jurnal-pekerja-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  gap: 1rem;
+}
+
+.jurnal-pekerja-info {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.jurnal-pekerja-info strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jurnal-pekerja-info span {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.jurnal-pekerja-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.jurnal-pekerja-status strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.jurnal-pekerja-status .status-badge {
+  margin-top: 0.25rem;
+}
+
+/* Warna-warna untuk status badge */
+.status-badge.status-hadir {
+  color: var(--success);
+  background-color: color-mix(in srgb, var(--success) 15%, transparent);
+}
+.status-badge.status-setengah {
+  color: var(--warn);
+  background-color: color-mix(in srgb, var(--warn) 15%, transparent);
+}
+.status-badge.status-absen {
+  color: var(--text-dim);
+  background-color: var(--surface-muted);
+}
+.status-badge.status-absen {
+  color: var(--text-dim);
+  background-color: var(--surface-muted);
+}
+
+/* Style untuk Tombol Pilihan Status di Modal */
+.button-group-selector {
+  display: flex;
+  width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.button-group-selector input[type="radio"] {
+  display: none; /* Sembunyikan radio button asli */
+}
+.button-group-selector label {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  background-color: var(--bg-soft);
+  color: var(--text-muted);
+  transition: all 0.2s ease-in-out;
+  font-weight: 500;
+}
+.button-group-selector input[type="radio"]:checked + label {
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+/* Style untuk info proyek di modal rincian jurnal */
+.jurnal-pekerja-project {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.125rem;
+}
+.jurnal-pekerja-project span {
+  color: var(--text-muted);
+}
+
+/* Styling untuk Kwitansi */
+.kwitansi-container {
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  color: #333;
+  background-color: #fff;
+}
+
+.kwitansi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px double #333;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.kwitansi-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+}
+
+.kwitansi-nomor {
+  font-size: 0.9rem;
+}
+
+.kwitansi-body dl {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 0.75rem;
+  font-size: 1rem;
+}
+
+.kwitansi-body dt {
+  font-weight: bold;
+}
+
+.kwitansi-body dd {
+  margin: 0;
+}
+
+.kwitansi-body .terbilang {
+  font-style: italic;
+  font-weight: bold;
+  background-color: #f0f0f0;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.kwitansi-footer {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column; /* <-- Susun secara vertikal */
+  align-items: flex-start; /* <-- Rata kiri */
+  gap: 1.5rem; /* <-- Beri jarak antar elemen */
+}
+
+.kwitansi-jumlah-box {
+  border: 2px solid #333;
+  padding: 1rem 1.5rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+  background-color: #f0f0f0;
+}
+
+.kwitansi-ttd {
+  width: 100%; /* <-- Pastikan bagian TTD mengambil lebar penuh */
+  text-align: right; /* <-- Pindahkan TTD ke kanan */
+}
+
+.kwitansi-ttd .penerima {
+  margin-bottom: 4rem; /* Spasi untuk tanda tangan */
+}
+
+.kwitansi-ttd .nama-penerima {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+/* GANTI BLOK CSS INI di style.css */
+.kwitansi-footer-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--line);
+}
+
+#kwitansi-printable-area {
+  width: 100%;
+  aspect-ratio: 74 / 105;
+  background-color: white;
+}
+
+/* [GANTI SELURUH BLOK CSS SIMULASI INI] */
+.simulasi-section {
+  margin-bottom: 0.5rem;
+  padding: 0,5rem;
+  overflow: hidden;
+}
+
+.simulasi-section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; padding: 0.8rem 1.5rem; background: transparent;
+  border: none; color: var(--text); cursor: pointer; text-align: left;
+}
+.simulasi-section-header .header-info {
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.simulasi-section-header .header-title {
+  font-size: 0.9rem; font-weight: 600;
+}
+.simulasi-section-header .header-total {
+  font-size: 0.9rem; color: var(--text-muted); font-weight: 500;
+}
+.simulasi-section-header .header-icon {
+  font-size: 0.9rem; transition: transform 0.3s ease;
+}
+.simulasi-section.open .simulasi-section-header {
+  border-bottom: 1px solid var(--border-color);
+}
+.simulasi-section.open .simulasi-section-header .header-icon {
+  transform: rotate(180deg);
+}
+.simulasi-section-content {
+  max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out;
+  padding: 0 1.5rem;
+}
+.simulasi-section.open .simulasi-section-content {
+  max-height: 1000px; padding: 1rem 1.5rem; transition: max-height 0.5s ease-in;
+}
+.simulasi-item {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: grid;
+  gap: 0 1rem;
+  align-items: center;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  transition: all 0.2s ease-in-out;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+      "info amount"
+      "info button";
+}
+
+.simulasi-item:hover {
+    border-color: var(--primary-light);
+}
+
+.simulasi-item.selected {
+    border-color: var(--primary);
+    background-color: var(--primary-bg);
+}
+
+.simulasi-item .check-icon {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-size: 1.5rem;
+    color: var(--primary);
+    background-color: var(--bg-card);
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.2s ease;
+}
+
+.simulasi-item.selected .check-icon {
+    transform: scale(1);
+}
+
+.simulasi-info { grid-area: info; }
+.simulasi-title { font-weight: bold; }
+.simulasi-desc { font-size: 0.85rem; color: var(--text-muted); }
+.simulasi-amount {
+    grid-area: amount;
+    font-weight: bold; font-size: 1.1rem; text-align: right;
+}
+.cicilan-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.partial-payment-btn {
+    grid-area: button;
+    justify-self: end;
+    display: none; /* Sembunyikan default */
+}
+
+.simulasi-item.selected[data-partial-allowed="true"] .partial-payment-btn {
+    display: block;
+}
+.simulasi-footer {
+  position: sticky; bottom: 65px; z-index: 10;
+}
+/* =======================================================
+ * [PERBAIKAN] Style Halaman Simulasi Pembayaran (Akordion Bertingkat)
+ * ======================================================= */
+
+/* Kartu ringkasan total di bagian atas */
+.simulasi-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.simulasi-summary .btn {
+  padding: 0.5rem 1rem;
+  min-height: 40px;
+}
+
+.simulasi-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.simulasi-totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.simulasi-totals .label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.simulasi-totals strong {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.total-with-percent {
+display: flex;
+align-items: baseline;
+gap: 0.75rem;
+}
+
+.percent-badge {
+display: inline-flex;
+font-size: 0.7rem;
+padding: .15rem .4rem;
+border-radius: 999px;
+font-weight: 600;
+color: var(--primary);
+border: 1px solid var(--primary);
+background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* Container untuk semua akordion */
+#simulasi-utang-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Seksi utama (per kategori: Gaji, Material, dll.) */
+.simulasi-section {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.simulasi-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.simulasi-section-header .header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.simulasi-section-header .header-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.simulasi-section-header .header-total {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.simulasi-section-header .header-icon {
+  font-size: 24px;
+  transition: transform 0.3s ease;
+}
+
+.simulasi-section.open .simulasi-section-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.simulasi-section.open .simulasi-section-header .header-icon {
+  transform: rotate(180deg);
+}
+
+/* Konten seksi utama (wadah untuk sub-seksi) */
+.simulasi-section-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-out, padding 0.3s ease-out;
+  padding: 0 1rem;
+  background-color: var(--surface-muted);
+}
+
+.simulasi-section.open .simulasi-section-content {
+  max-height: 40vh; /* [PERBAIKAN] Batasi tinggi dan aktifkan scroll */
+  overflow-y: auto;
+  transition: max-height 0.5s ease-in, padding 0.3s ease-in;
+  padding: 0.75rem 1rem;
+}
+
+/* Sub-seksi (per orang: Santri, Mang Edoy, dll.) */
+.simulasi-subsection {
+  margin-bottom: 0.5rem;
+}
+.simulasi-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.simulasi-subsection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.simulasi-subsection-header .header-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.simulasi-subsection-header .header-total {
+font-size: 0.9rem; color: var(--text-dim); font-weight: 500;
+}
+.simulasi-subsection-header .header-icon {
+  transition: transform 0.3s ease;
+  font-size: 20px;
+}
+
+.simulasi-subsection.open .simulasi-subsection-header .header-icon {
+  transform: rotate(180deg);
+}
+
+/* Konten sub-seksi (daftar rincian tagihan) */
+.simulasi-subsection-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, padding-top 0.3s ease-out, padding-bottom 0.3s ease-out;
+  padding: 0 0.5rem;
+}
+
+.simulasi-subsection.open .simulasi-subsection-content {
+  max-height: 250px; /* [PERBAIKAN] Batasi tinggi dan aktifkan scroll */
+  overflow-y: auto;
+  transition: max-height 0.4s ease-in;
+  padding-top: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+
+/* Item rincian tagihan */
+.simulasi-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-left-color: transparent;
+  cursor: pointer;
+  background-color: var(--panel);
+  border-radius: var(--radius);
+  transition: all 0.2s ease-in-out;
+}
+
+.simulasi-item:active {
+  transform: scale(0.98);
+}
+
+.simulasi-item.selected {
+  border-left-color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.simulasi-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.simulasi-amount {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.cicilan-label {
+   display: block;
+   font-size: 0.75rem;
+   font-weight: 500;
+   color: var(--text-dim);
+}
+
+/* Styling untuk modal aksi item simulasi */
+.simulasi-actions-modal-header {
+   padding-bottom: 1rem;
+   margin-bottom: 1rem;
+   border-bottom: 1px solid var(--line);
+}
+.simulasi-actions-modal-header h5 {
+   font-size: 1.1rem;
+   margin: 0 0 0.25rem 0;
+}
+.simulasi-actions-modal-header p {
+   font-size: 0.85rem;
+   color: var(--text-dim);
+   margin: 0;
+   line-height: 1.5;
+}
+.simulasi-actions-modal-footer {
+   display: flex;
+   flex-direction: column;
+   gap: 0.75rem;
+   margin-top: 1.5rem;
+}
+.dense-list-container {
+  padding: 0 .5rem 2rem .5rem;
+}
+.dense-list-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem;
+  border-bottom: 1px solid var(--line);
+  background-color: var(--panel);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.item-main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  cursor: pointer;
+  min-width: 0;
+}
+.item-title {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-subtitle {
+  font-size: .75rem;
+  color: var(--text-dim);
+}
+.item-details {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: .25rem;
+}
+.item-amount {
+  font-size: .85rem;
+  font-weight: 600;
+}
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  flex-shrink: 0;
+}
+.item-actions .btn-sm {
+  font-size: 0.7rem;
+  padding: 0.3rem 0.6rem;
+}
+.item-actions .btn-sm .material-symbols-outlined {
+  font-size: 16px;
+}
+
+        /* CSS Baru untuk Custom Checkbox */
+        .custom-checkbox-label {
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          padding: 5px; /* Memberi area klik yang lebih besar */
+      }
+
+      .fee-alloc-checkbox {
+          /* Sembunyikan checkbox asli */
+          opacity: 0;
+          width: 0;
+          height: 0;
+          position: absolute;
+      }
+
+      .custom-checkbox-visual {
+          /* Buat kotak visual checkbox */
+          width: 22px;
+          height: 22px;
+          border: 2px solid var(--border-color);
+          border-radius: 6px;
+          display: inline-block;
+          position: relative;
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+          flex-shrink: 0; /* Mencegah kotak mengecil */
+      }
+
+      .fee-alloc-checkbox:checked + .custom-checkbox-visual {
+          /* Gaya saat checkbox dicentang */
+          background-color: var(--primary);
+          border-color: var(--primary);
+      }
+
+      .custom-checkbox-visual::after {
+          /* Buat tanda centang menggunakan CSS */
+          content: '';
+          position: absolute;
+          left: 6px;
+          top: 2px;
+          width: 6px;
+          height: 12px;
+          border: solid white;
+          border-width: 0 3px 3px 0;
+          transform: rotate(45deg);
+          opacity: 0; /* Sembunyikan secara default */
+          transition: opacity 0.2s ease;
+      }
+
+      .fee-alloc-checkbox:checked + .custom-checkbox-visual::after {
+          /* Tampilkan tanda centang saat checkbox dicentang */
+          opacity: 1;
+      }
+      
+      /* [Opsional] Menambahkan sedikit jarak antara checkbox dan teks */
+      .detail-list-item {
+          gap: 12px;
+      }
+
+      /* === Gaya untuk Kartu Analisis Beban === */
+.analysis-card {
+  margin-bottom: 1.5rem;
+}
+
+.analysis-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.analysis-category-row {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.analysis-category-row .category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+}
+
+.analysis-category-row .category-name {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.analysis-category-row .category-total {
+  font-weight: 600;
+}
+
+.analysis-category-row .category-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.analysis-category-row .category-details strong {
+  font-weight: 600;
+}
+
+/* === Gaya untuk Sub-Item di Detail List Laporan === */
+.detail-list .sub-item dt,
+.detail-list .sub-item dd {
+    padding-left: 1.5rem; /* Memberi efek menjorok ke dalam */
+    font-size: 0.8rem;    /* Ukuran font sedikit lebih kecil */
+    color: var(--text-dim); /* Warna sedikit lebih redup */
+}
+
+.detail-list .sub-item dd {
+    font-weight: 500; /* Dibuat tidak setebal angka total */
+}
+
+.estimasi-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; }
+.estimasi-info { display: flex; flex-direction: column; }
+.estimasi-info span { font-size: 0.8rem; color: var(--text-dim); }
+.estimasi-input { display: flex; align-items: center; gap: 1rem; }
+.estimasi-input .qty-beli { width: 80px; text-align: center; }
+.estimasi-input .estimasi-subtotal { font-weight: 600; width: 120px; text-align: right; }
+
+/* =======================================================
+ * [BARU] Style untuk Manajer Lampiran di Modal
+ * ======================================================= */
+
+ .attachment-manager-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.attachment-manager-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background-color: var(--surface-muted);
+}
+
+.attachment-manager-item.placeholder {
+  justify-content: center;
+  min-height: 200px;
+}
+
+.attachment-manager-item .placeholder-icon .material-symbols-outlined {
+  font-size: 48px;
+  color: var(--text-dim);
+}
+
+.attachment-manager-item .placeholder span {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.attachment-preview-thumb {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+
+.attachment-manager-item strong {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.attachment-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.attachment-manager-actions .btn-sm {
+font-size: 0.7rem;
+padding: 0.3rem 0.6rem;
+}
+
+/* =======================================================
+ * [BARU] Style untuk Modal Pemilihan Material
+ * ======================================================= */
+ .material-selector-modal .modal-content {
+  height: 90vh; /* Ambil 90% tinggi layar */
+}
+
+.material-selector-modal .modal-header {
+  padding-bottom: 0.5rem;
+}
+
+.modal-search-bar {
+  padding: 0.5rem 1.25rem 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.material-selector-modal .modal-body {
+  padding: 0.75rem;
+}
+
+.material-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.material-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  background-color: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.material-list-item:hover {
+  background-color: var(--panel);
+  transform: scale(1.02);
+}
+
+.material-list-item .item-info strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.material-list-item .item-info span {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.material-list-item .item-stock {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+/* =======================================================
+ * [BARU] Style untuk Aksi di Riwayat Stok
+ * ======================================================= */
+ .jurnal-item {
+  position: relative;
+  padding-right: 4rem; /* Beri ruang untuk tombol */
+}
+
+.jurnal-item-actions {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* =======================================================
+ * [BARU] Style untuk Daftar Stok yang Lebih Rapat
+ * ======================================================= */
+ .dense-list-container {
+  padding: 0 .5rem 2rem .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dense-list-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem;
+  border-bottom: 1px solid var(--line);
+  background-color: var(--panel);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+.item-main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  cursor: pointer;
+  min-width: 0;
+}
+.item-title {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-subtitle {
+  font-size: .75rem;
+  color: var(--text-dim);
+}
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  flex-shrink: 0;
+}
+.item-actions .btn-sm {
+  font-size: 0.7rem;
+  padding: 0.3rem 0.6rem;
+}
+.item-actions .btn-sm .material-symbols-outlined {
+  font-size: 16px;
+}
+.stok-header {
+    padding: 0 .5rem 1rem .5rem;
+}
+/* =======================================================
+ * [REVISI] Style untuk Item Riwayat Stok
+ * ======================================================= */
+ .jurnal-item {
+  cursor: pointer; /* Menambahkan cursor pointer agar terlihat bisa diklik */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.jurnal-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.jurnal-item-content {
+  padding: 0.75rem 1rem;
+}
+
+.jurnal-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.jurnal-item-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* [BARU] Perbaikan Tampilan Modal Detail Gaji & Responsif */
+.detail-list-item .item-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap; /* Memungkinkan item turun ke bawah jika layar sempit */
+  justify-content: flex-end;
+}
+
+.individual-payment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* --- Autocomplete Component Styles --- */
+
+/* Wrapper utama, posisinya sebagai jangkar untuk daftar saran */
+.autocomplete-wrapper {
+  position: relative;
+}
+
+/* Kontainer untuk daftar saran */
+.autocomplete-suggestions {
+  display: none; /* Sembunyi secara default */
+  position: absolute;
+  top: 100%; /* Muncul tepat di bawah input */
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  max-height: 200px; /* Batas tinggi, bisa di-scroll */
+  overflow-y: auto;
+  z-index: 1000; /* Pastikan muncul di atas elemen lain */
+}
+
+/* Tampilkan kontainer saat aktif */
+.autocomplete-suggestions.active {
+  display: block;
+}
+
+/* Setiap item dalam daftar saran */
+.suggestion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+}
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+.suggestion-item:hover {
+  background-color: #f8fafc;
+}
+
+/* Nama material di dalam item saran */
+.suggestion-item .suggestion-name {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+/* Teks yang cocok dengan pencarian */
+.suggestion-item .match-highlight {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+/* Badge untuk satuan */
+.suggestion-item .unit-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.15rem 0.4rem;
+  border-radius: 99px;
+  background-color: #e2e8f0;
+  color: #475569;
+  white-space: nowrap; /* Mencegah badge terpotong */
+}
+
+.autocomplete-clear-btn {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex; /* Menggunakan flex untuk alignment vertikal icon */
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.autocomplete-clear-btn:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.autocomplete-clear-btn .material-symbols-outlined {
+  font-size: 18px; /* Ukuran icon */
+}
+
+/* Sedikit penyesuaian pada input agar tidak tertimpa tombol */
+.autocomplete-wrapper .autocomplete-input {
+  padding-right: 35px; /* Beri ruang untuk tombol X */
+}
+
+/* Mobile layout fixes for detail lists, jurnal & stok */
+@media (max-width: 480px) {
+  .item-total { white-space: normal; }
+  /* Make key-value items stack to prevent overlap */
+  .detail-list div { display: grid; grid-template-columns: 1fr; gap: .25rem; }
+  .detail-list dd { text-align: left; }
+
+  /* Jurnal list headers/details wrap nicely */
+  .jurnal-item-header, .jurnal-item-details { flex-wrap: wrap; gap: .25rem .5rem; }
+
+  /* Move action buttons below to avoid overlap on very small screens */
+  .jurnal-item { padding-right: .75rem; }
+  .jurnal-item-actions { position: static; transform: none; margin-top: .5rem; justify-content: flex-end; }
+}
+/* Styling untuk tombol tambah di dalam autocomplete */
+.autocomplete-add-btn {
+  position: absolute;
+  /* Posisikan di sebelah kiri tombol hapus */
+  right: 40px; 
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background-color: #e0f2fe; /* Warna biru muda */
+  color: #0284c7; /* Warna biru primer */
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.autocomplete-add-btn:hover {
+  background-color: #bae6fd;
+  color: #0369a1;
+}
+
+.autocomplete-add-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* Penyesuaian padding input untuk DUA tombol */
+.autocomplete-wrapper .autocomplete-input {
+  /* Beri ruang lebih banyak untuk tombol X dan + */
+  padding-right: 75px; 
+}
+
+/* =======================================================
+ * Sidebar Styles (Desktop)
+ * ======================================================= */
+
+ .sidebar {
+  gap: 1.5rem; /* Jarak antar bagian: header, list, profile */
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem; /* Sedikit padding horizontal */
+}
+
+.sidebar-logo {
+  width: 36px;
+  height: auto;
+}
+
+.sidebar-app-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Jarak antar item menu */
+  flex-grow: 1; /* Membuat list ini mengisi ruang kosong */
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  position: relative; /* Untuk badge notifikasi */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--surface-muted);
+  color: var(--text);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--primary-bg, #e0f2fe);
+  color: var(--primary, #0ea5e9);
+  font-weight: 600;
+}
+
+.sidebar-nav-item .material-symbols-outlined {
+  font-size: 22px;
+}
+
+/* Badge notifikasi di sidebar */
+.sidebar-nav-item .notification-badge {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--danger);
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sidebar-profile {
+  margin-top: auto; /* Mendorong profile ke bagian bawah */
+  padding: 0.75rem;
+  background-color: var(--surface-muted);
+  border-radius: var(--radius);
+}
+
+.sidebar-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.profile-avatar-sm {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-name-sm {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-email-sm {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 768px) {
+  /* --- Pengaturan Dasar untuk Desktop --- */
+  #app-shell {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+  }
+
+  .bottom-nav {
+      display: none !important; /* Sembunyikan Navigasi Bawah */
+  }
+
+  /* Sembunyikan Aksi Cepat di tampilan desktop */
+  .quick-actions-section {
+      display: none !important;
+  }
+
+  .content-wrapper {
+      height: 100vh;
+      overflow-y: auto;
+      padding-bottom: 0;
+      /* [BARU] Transisi untuk pergerakan halus */
+      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .page-container {
+      overflow-y: visible;
+  }
+
+  /* --- [LOGIKA BARU] Sidebar Collapsible --- */
+
+  /* 1. Kondisi default (ciut/collapsed) */
+  .sidebar {
+      display: flex;
+      flex-direction: column;
+      width: 80px; /* Lebar saat ciut */
+      background-color: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 1.5rem 1rem;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animasi halus */
+      overflow: hidden; /* Sembunyikan konten yang meluber */
+  }
+
+  .content-wrapper {
+      margin-left: 80px; /* Beri ruang sesuai lebar sidebar ciut */
+  }
+
+  /* Sembunyikan teks & detail saat ciut */
+  .sidebar .nav-text,
+  .sidebar .sidebar-app-name,
+  .sidebar .profile-text {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      white-space: nowrap; /* Mencegah teks turun baris */
+  }
+
+  /* Pusatkan item saat ciut */
+  .sidebar-header,
+  .sidebar-nav-item,
+  .sidebar-profile-info {
+      justify-content: center;
+  }
+  .sidebar-logo {
+      margin-left: -4px; /* Penyesuaian posisi logo */
+  }
+  .sidebar-nav-item .nav-text {
+      position: absolute; /* Cegah teks mendorong ikon */
+      left: 80px;
+  }
+
+
+  /* 2. Kondisi saat di-hover (melebar/expanded) */
+  .sidebar:hover {
+      width: 240px; /* Lebar saat melebar */
+  }
+
+  .sidebar:hover + .content-wrapper {
+      margin-left: 240px; /* Dorong konten utama saat sidebar melebar */
+  }
+
+  /* Tampilkan kembali teks & detail saat melebar */
+  .sidebar:hover .nav-text,
+  .sidebar:hover .sidebar-app-name,
+  .sidebar:hover .profile-text {
+      opacity: 1;
+      visibility: visible;
+      transition-delay: 0.1s; /* Teks muncul setelah sidebar mulai melebar */
+  }
+
+  /* Kembalikan alignment saat melebar */
+  .sidebar:hover .sidebar-header,
+  .sidebar:hover .sidebar-nav-item,
+  .sidebar:hover .sidebar-profile-info {
+      justify-content: flex-start;
+  }
+   .sidebar:hover .sidebar-logo {
+      margin-left: 0;
+  }
+}
+
+/* =======================================================
+ * Skeleton Loader Styles
+ * ======================================================= */
+
+ .skeleton-wrapper {
+  padding: var(--spacing);
+}
+
+.skeleton {
+  background-color: #e2e8f0;
+  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animasi kilau (shimmer effect) */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background-image: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0) 0, 
+      rgba(255, 255, 255, 0.3) 50%, 
+      rgba(255, 255, 255, 0) 100%);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+      left: 150%;
+  }
+}
+
+/* Variasi bentuk skeleton */
+.skeleton-card {
+  width: 100%;
+  height: 80px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.skeleton-actions {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.skeleton-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  margin: 0 auto 0.5rem auto;
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-text-sm {
+  height: 12px;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 40%;
+  margin: 1.5rem 0 1rem 0;
+}
+
+/* =======================================================
+ * [Peningkatan] Warna untuk Ikon Aksi Cepat
+ * ======================================================= */
+
+ .dashboard-action-item[data-nav="tagihan"] .icon-wrapper {
+  background-color: #e0f2fe; /* Biru Muda */
+  color: #0ea5e9;
+}
+.dashboard-action-item[data-nav="laporan"] .icon-wrapper {
+  background-color: #dcfce7; /* Hijau Muda */
+  color: #22c55e;
+}
+.dashboard-action-item[data-nav="stok"] .icon-wrapper {
+  background-color: #fef9c3; /* Kuning Muda */
+  color: #a16207;
+}
+.dashboard-action-item[data-nav="pengeluaran"] .icon-wrapper {
+  background-color: #fee2e2; /* Merah Muda */
+  color: #ef4444;
+}
+.dashboard-action-item[data-nav="lainnya"] .icon-wrapper,
+.dashboard-action-item[data-nav="pengaturan"] .icon-wrapper {
+  background-color: #f3f4f6; /* Abu-abu Muda */
+  color: #4b5563;
+}
+
+/* =======================================================
+ * [PERBAIKAN] UI/UX Dashboard & Responsif
+ * ======================================================= */
+
+/* --- Solusi Masalah 1: Dashboard tidak bisa disentuh --- */
+.content-wrapper {
+  position: relative; /* Diperlukan untuk z-index */
+  z-index: 1; /* Memastikan konten berada di lapisan atas */
+}
+
+/* --- Solusi Masalah 2: Tampilan kartu & grafik --- */
+
+/* 1. Atur agar grid kartu menjadi 1 kolom di mobile (Mobile First) */
+.dashboard-balance-grid {
+  grid-template-columns: 1fr; /* Default menjadi 1 kolom */
+}
+
+/* 2. Beri tinggi yang pasti pada wadah grafik */
+.sparkline-container {
+  height: 45px; /* Tinggi yang ideal untuk grafik tren mini */
+  margin-top: 0.5rem; /* Jarak dari angka di atasnya */
+}
+
+/* 3. Atur kembali menjadi 2 kolom HANYA di tampilan desktop */
+@media (min-width: 768px) {
+  .dashboard-balance-grid {
+      grid-template-columns: 1fr 1fr; /* Kembali menjadi 2 kolom di layar lebar */
+  }
+}
+
+
+/* Dark theme */
+.dark-theme {
+  --bg-start: #0b1220;
+  --bg-end: #0f172a;
+  --panel: #0f172a;
+  --surface-muted: #0b1323;
+  --text: #e5e7eb;
+  --text-dim: #94a3b8;
+  --line: #1e293b;
+}
+body.dark-theme { background-image: none; background-color: #0b1220; }
+.dark-theme .card, .dark-theme .toolbar .search, .dark-theme input, .dark-theme select, .dark-theme textarea { background: var(--panel); color: var(--text); border-color: var(--line); }
+.dark-theme .toolbar .icon-btn { background: var(--surface-muted); border-color: var(--line); color: var(--text-dim); }
+.dark-theme .popup-content { background: #111827; color: var(--text); }
+.dark-theme .modal-content { background: #0f172a; }
+
+/* Swipe actions for list items */
+.dense-list-item { position: relative; overflow: hidden; }
+.dense-list-item .swipe-actions { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: .4rem; opacity: 0; pointer-events: none; transition: opacity .2s var(--transition-base); z-index: 1; }
+.dense-list-item .item-main-content { transition: transform .2s var(--transition-base); }
+.dense-list-item.swipe-open .swipe-actions { opacity: 1; pointer-events: auto; }
+.dense-list-item.swipe-open .item-main-content { transform: translateX(-56px); }
+
+/* Modal slide in right for sub-content */
+.modal-content.modal-slide-right { transform: translateX(30px); opacity: 0; }
+.modal-bg.show .modal-content.modal-slide-right { transform: translateX(0); opacity: 1; transition: transform .25s var(--transition-base), opacity .25s var(--transition-base); }
+/* Header polish */
+.page-label { padding: .75rem var(--spacing); align-items:center; gap:.75rem }
+.page-label .app-name { font-weight:700; letter-spacing:.2px; color: var(--text); }
+.page-label .page-name { font-size: .82rem; font-weight: 500; color: var(--text-dim); margin: 0; }
+
+/* Sync indicator alignment (mobile & global) */
+#sync-indicator, .sync-indicator { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
+
+/* Smooth theme transition */
+.theme-animating, .theme-animating * {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease, fill .25s ease;
+}
+
+/* Theme toggle button in Pengaturan */
+.profile-card-settings { position: relative; }
+.theme-toggle-btn { position: absolute; top: .5rem; right: .5rem; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-muted); color: var(--text-dim); cursor: pointer; }
+.theme-toggle-btn:hover { background: color-mix(in srgb, var(--surface-muted) 60%, transparent); color: var(--text); }
+.breadcrumb-container { color: var(--text-dim); font-size: .82rem; display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.breadcrumb-container span { margin-right:.25rem }
+/* Tampilkan breadcrumb hanya di halaman Tagihan dan Jurnal */
+body.page-tagihan .breadcrumb-container,
+body.page-jurnal .breadcrumb-container { display: block; }
