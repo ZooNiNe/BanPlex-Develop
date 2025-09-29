@@ -1,0 +1,131 @@
+/* =======================================================
+ * BanPlex Styles - Base
+ * :root variables, global resets, and body styles.
+ * ======================================================= */
+
+:root {
+  --bg-start: #f0f4f8;
+  --bg-end: #d9e2ec;
+  --panel: #ffffff;
+  --surface-muted: #f8fafc;
+  --text: #000000;
+  --text-dim: #64748b;
+  --line: #e2e8f0;
+  --primary: #0ea5e9;
+  --info: #10b981;
+  --grad: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warn: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+  --spacing: 1rem;
+  --transition-base: 250ms cubic-bezier(.4,0,.2,1);
+  /* Motion system */
+  --motion-duration-fast: 150ms;
+  --motion-duration-base: 250ms;
+  --motion-duration-slow: 400ms;
+  --motion-ease-standard: cubic-bezier(.4, 0, .2, 1);
+  --motion-ease-emphasized: cubic-bezier(.2, 0, 0, 1);
+  /* Keep compatibility */
+  --transition-base: var(--motion-duration-base) var(--motion-ease-standard);
+  --grad-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  /* Design tokens for consistency */
+  --font-xs: .75rem;
+  --font-sm: .8rem;
+  --font-md: .9rem;
+  --font-lg: 1rem;
+  --icon-sm: 18px;
+  --icon-md: 22px;
+  --icon-lg: 24px;
+}
+
+.dark-theme {
+  --bg-start: #0b1220;
+  --bg-end: #0f172a;
+  --panel: #0f172a;
+  --surface-muted: #0b1323;
+  --text: #e5e7eb;
+  --text-dim: #94a3b8;
+  --line: #1e293b;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent body scrolling for app layout */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../background-image.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  filter: brightness(100%) contrast(90%);
+}
+
+.dark-theme body::before {
+  background-image: url('../dark-background-image.jpg');
+  filter: brightness(60%);
+}
+
+body.dark-theme {
+  background-image: none;
+  background-color: #0b1220;
+}
+
+/* [PERBAIKAN] Konsistensi dan Readability Dark Theme */
+body.dark-theme::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 19, 35, 0.2);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.material-symbols-outlined {
+  font-size: var(--icon-md);
+  line-height: 1;
+}
+
+/* Global reduced-motion guard */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Smooth theme transition */
+.theme-animating, .theme-animating * {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease, fill .25s ease;
+}
