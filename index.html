@@ -2,8 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>BanPlex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">    <title>BanPlex</title>
     <meta name="description" content="Aplikasi Manajemen Proyek Konstruksi">
     <meta name="theme-color" content="#f0f4f8"/>
 
@@ -11,34 +10,28 @@
     <link rel="icon" href="icons-logo.png" type="image/png">
     <link rel="apple-touch-icon" href="icons-logo.png">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />   
     <link rel="stylesheet" href="style.css">
 
-        <script>
-            (function() {
-                const theme = localStorage.getItem('banplex_theme');
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark-theme');
-                }
-            })();
-        </script>
-
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-        <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
-    </head>
-    <body>
-    <!-- Loader minimal tanpa logo (non-blocking) -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('banplex_theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
+</head>
+<body>
     <div id="global-loader" class="global-loader" style="display:none">
         <div class="loader-content"><div class="loader-spinner"></div></div>
     </div>
-
     <div id="app-shell" style="display: none;">
         <nav class="sidebar" id="sidebar-nav"></nav>
-        
         <div class="content-wrapper">
             <div class="page-label">
                 <div class="title-group">
@@ -50,48 +43,35 @@
                     <span id="sync-indicator" class="sync-indicator" style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--text-muted);"></span>
                 </div>
             </div>
-            
             <div id="ptr" class="ptr" aria-hidden="true">
                 <div class="ptr-spinner" aria-hidden="true"></div>
             </div>
-    
             <main id="page-container" class="page-container"></main>
         </div>
-        
         <nav class="bottom-nav" id="bottom-nav"></nav>
     </div>
-    
     <div id="selection-bar" class="selection-bar">
-        <button id="close-selection-btn" class="btn-icon">
-            <span class="material-symbols-outlined">close</span>
-        </button>
-        <div class="selection-info">
-            <span id="selection-count">0 item dipilih</span>
-            <strong id="selection-total">Rp 0</strong>
-        </div>
-    </div>    
+        <button id="close-selection-btn" class="btn-icon"><span class="material-symbols-outlined">close</span></button>
+        <div class="selection-info"><span id="selection-count">0 item dipilih</span><strong id="selection-total">Rp 0</strong></div>
+    </div>
     <div id="modal-container"></div>
     <div id="popup-container"></div>
-    <!-- [MODIFIKASI] Struktur notifikasi update diubah menjadi lebih ringkas -->
-    <div id="update-notification">
-        <div class="update-card">
-            <div class="update-info">
-                 <h4>Aplikasi telah diperbarui</h4>
-                 <p>Mulai ulang untuk versi terbaru.</p>
-            </div>
-            <button id="reload-app-btn" class="btn">Mulai Ulang</button>
-        </div>
-    </div>
-        
     <input type="file" id="attachment-uploader" accept="image/*" class="hidden">
-
     <script>window.firebaseConfig = {}</script>
+    
+    <!-- REVISI: Semua script library dipindahkan ke sini dengan atribut 'defer' -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js" defer></script>
 
-    <script>
-      // Register service worker: use sw-workbox.js for offline support
+    <!-- Script Service Worker bisa di-defer karena tidak krusial untuk render awal -->
+    <script defer>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw-workbox.js', { scope: './' }).then(reg => {
+            // ... (logika service worker tetap sama) ...
             const showUpdateNotice = () => {
               const card = document.getElementById('update-notification');
               if (card) card.style.display = 'block';
@@ -102,7 +82,6 @@
                 };
               }
             };
-
             if (reg.waiting) showUpdateNotice();
             reg.addEventListener('updatefound', () => {
               const nw = reg.installing;
@@ -113,16 +92,32 @@
                 }
               });
             });
-
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-              // New SW took control; reload to apply fresh assets
               window.location.reload();
             });
+            const poke = () => reg.update && reg.update();
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') poke(); });
+            window.addEventListener('online', poke);
+            setInterval(poke, 5 * 60 * 1000);
+            if ('SyncManager' in window) {
+              navigator.serviceWorker.ready.then(swReg => swReg.sync.register('banplex-sync')).catch(()=>{});
+            }
+            (async () => {
+              try {
+                if (reg.periodicSync) {
+                  const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                  if (status.state === 'granted') {
+                    await reg.periodicSync.register('banplex-periodic-sync', { minInterval: 15 * 60 * 1000 });
+                  }
+                }
+              } catch (_) {}
+            })();
           }).catch(err => console.error('SW register failed', err));
         });
       }
     </script>
 
-    <script type="module" src="script.js"></script>
+    <!-- Script utama aplikasi juga di-defer dan diletakkan di akhir -->
+    <script type="module" src="script.js" defer></script>
 </body>
 </html>
