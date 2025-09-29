@@ -169,69 +169,70 @@ async function main() {
       Viewer: ['dashboard', 'laporan', 'tagihan', 'stok', 'pengaturan']
   };
 
-  const appState = {
-    currentUser: null,
-    userRole: 'Guest',
-    userStatus: null,
-    justLoggedIn: false,
-    pendingUsersCount: 0,
-    activePage: localStorage.getItem('lastActivePage') || 'dashboard',
-    activeSubPage: new Map(),
-    isOnline: navigator.onLine,
-    isSyncing: false,
-    comments: [],
-    projects: [],
-    clients: [],
-    fundingCreditors: [],
-    operationalCategories: [],
-    materialCategories: [],
-    otherCategories: [],
-    suppliers: [],
-    workers: [],
-    professions: [],
-    incomes: [],
-    fundingSources: [],
-    expenses: [],
-    bills: [],
-    attendance: new Map(),
-    users: [],
-    materials: [],
-    stockTransactions: [],
-    attendanceRecords: [],
-    staff: [],
-    tagihan: {
-        currentList: [], // Untuk menyimpan daftar tagihan yang ditampilkan
-    },
-    selectionMode: {
-        active: false,
-        selectedIds: new Set(),
-        pageContext: ''
-    },
-    billsFilter: {
-        searchTerm: '',
-        projectId: 'all',
-        supplierId: 'all',
-        sortBy: 'dueDate',
-        sortDirection: 'desc',
-        category: 'all'
-    },
-    pagination: {
-        bills: {
-            lastVisible: null,
-            isLoading: false,
-            hasMore: true
-        }
-    },
-    dashboardTotals: {
-        labaBersih: 0,
-        totalUnpaid: 0,
-    },
-    pdfSettings: null,
-    simulasiState: {
-        selectedPayments: new Map()
-    },
-    activeListeners: new Map(),
-};
+  // MOVED TO: src/core/state.js
+  // const appState = {
+  //   currentUser: null,
+  //   userRole: 'Guest',
+  //   userStatus: null,
+  //   justLoggedIn: false,
+  //   pendingUsersCount: 0,
+  //   activePage: localStorage.getItem('lastActivePage') || 'dashboard',
+  //   activeSubPage: new Map(),
+  //   isOnline: navigator.onLine,
+  //   isSyncing: false,
+  //   comments: [],
+  //   projects: [],
+  //   clients: [],
+  //   fundingCreditors: [],
+  //   operationalCategories: [],
+  //   materialCategories: [],
+  //   otherCategories: [],
+  //   suppliers: [],
+  //   workers: [],
+  //   professions: [],
+  //   incomes: [],
+  //   fundingSources: [],
+  //   expenses: [],
+  //   bills: [],
+  //   attendance: new Map(),
+  //   users: [],
+  //   materials: [],
+  //   stockTransactions: [],
+  //   attendanceRecords: [],
+  //   staff: [],
+  //   tagihan: {
+  //       currentList: [], // Untuk menyimpan daftar tagihan yang ditampilkan
+  //   },
+  //   selectionMode: {
+  //       active: false,
+  //       selectedIds: new Set(),
+  //       pageContext: ''
+  //   },
+  //   billsFilter: {
+  //       searchTerm: '',
+  //       projectId: 'all',
+  //       supplierId: 'all',
+  //       sortBy: 'dueDate',
+  //       sortDirection: 'desc',
+  //       category: 'all'
+  //   },
+  //   pagination: {
+  //       bills: {
+  //           lastVisible: null,
+  //           isLoading: false,
+  //           hasMore: true
+  //       }
+  //   },
+  //   dashboardTotals: {
+  //       labaBersih: 0,
+  //       totalUnpaid: 0,
+  //   },
+  //   pdfSettings: null,
+  //   simulasiState: {
+  //       selectedPayments: new Map()
+  //   },
+  //   activeListeners: new Map(),
+//};
 
 // =======================================================
 //      SEKSI 1.5: DATABASE LOKAL (DEXIE.JS)
@@ -393,6 +394,7 @@ function _createFormGroupHTML(id, labelText, inputHTML) {
     `;
 }
 
+/*
 function _serializeForm(form) {
     const fd = new FormData(form);
     const data = {};
@@ -414,14 +416,13 @@ async function _submitFormAsync(form) {
     const isMultipart = (form.getAttribute('enctype') || '').includes('multipart/form-data') || form.querySelector('input[type="file"]');
     let body;
     const headers = { 'Accept': 'application/json' };
-    // Dev helper: bila berjalan di live-server (tanpa backend), jangan panggil API agar fallback lokal jalan
     try {
         const isDevStatic = (location.hostname === '127.0.0.1' || location.hostname === 'localhost') && (location.port === '5500' || location.port === '5501');
         const isAppApi = typeof endpoint === 'string' && endpoint.startsWith('/api/');
         if (isDevStatic && isAppApi) {
             throw new Error('DEV_NO_API');
         }
-    } catch (_) { /* ignore if location is unavailable */ }
+    } catch (_) { }
     if (isMultipart) {
         body = new FormData(form);
     } else {
@@ -434,7 +435,6 @@ async function _submitFormAsync(form) {
         const text = await res.text().catch(() => '');
         throw new Error(text || `HTTP ${res.status}`);
     }
-    // Try parse JSON, fallback to text
     let data = null;
     try { data = await res.json(); } catch (_) { data = await res.text().catch(() => ({})); }
     return data;
@@ -443,7 +443,6 @@ async function _submitFormAsync(form) {
 function _buildApiPayload(form) {
     const id = form.id;
     const type = form.dataset.type;
-    // Helper getters within form
     const g = (sel) => form.querySelector(sel);
     const gv = (sel) => g(sel)?.value;
     if (id === 'pemasukan-form') {
@@ -480,7 +479,6 @@ function _buildApiPayload(form) {
     if (id === 'material-invoice-form') {
         const items = $$('#invoice-items-container .invoice-item-row', form).map(row => {
             const mId = row.querySelector('[name="materialId"], [data-material-id]')?.value || row.dataset.materialId || null;
-            // Support both legacy names and new inputs
             const qtyRaw = row.querySelector('input[name="itemQty"], [name="quantity"], .item-qty, .qty')?.value || row.dataset.qty || 0;
             const qty = parseLocaleNumber(qtyRaw);
             const price = parseFormattedNumber(row.querySelector('input[name="itemPrice"], [name="price"], .item-price, .price')?.value || '0');
@@ -602,10 +600,12 @@ function _buildApiPayload(form) {
         }
         return payload;
     }
-    // Default fallback to JSON of form inputs
     return _serializeForm(form);
 }
+*/
 
+/*
+/*
 function _applyTheme(theme) {
     const root = document.documentElement;
     root.classList.add('theme-animating');
@@ -624,6 +624,8 @@ function toggleTheme() {
     const isDark = document.documentElement.classList.contains('dark-theme');
     _applyTheme(isDark ? 'light' : 'dark');
 }
+*/
+*/
 
 // Fallback to local handlers for async forms when network/API is unavailable
 async function _fallbackLocalFormHandler(form) {
@@ -677,6 +679,8 @@ async function _fallbackLocalFormHandler(form) {
     }
 }
 
+/*
+/*
 // --- Generic API helpers for CRUD ---
 async function _apiRequest(method, url, payload = null) {
     const headers = { 'Accept': 'application/json' };
@@ -706,6 +710,8 @@ function _mapDeleteEndpoint(entity, id) {
     }
     return null;
 }
+*/
+*/
 
 const generateUUID = () => {
     try {
@@ -719,6 +725,7 @@ const generateUUID = () => {
     });
 };
 
+/*
 async function optimisticUpdateDoc(colRef, id, partialChanges) {
     const ref = doc(colRef, id);
     await runTransaction(db, async (transaction) => {
@@ -732,6 +739,7 @@ async function optimisticUpdateDoc(colRef, id, partialChanges) {
         });
     });
 }
+*/
 
 // ------------------ Breadcrumbs ------------------
 function setBreadcrumb(parts = []) {
@@ -969,6 +977,7 @@ function animatePageEnter(container, effect = 'to-left') {
     requestAnimationFrame(() => requestAnimationFrame(() => container.classList.remove(enterClass)));
 }
 
+/*
 async function initializeAppSession(user) {
     appState.currentUser = user;
     const userDocRef = doc(membersCol, user.uid);
@@ -1020,6 +1029,7 @@ async function initializeAppSession(user) {
         renderUI();
     }
 }
+*/
 
 function toast(type, message, duration = 4000) {
     const container = $('#popup-container');
@@ -1131,6 +1141,7 @@ function _initToastSwipeHandler() {
     });
 }
 
+/*
 async function loadAllLocalDataToState() {
     console.log("Memuat data dari database lokal ke state...");
     try {
@@ -1166,6 +1177,7 @@ async function loadAllLocalDataToState() {
         console.error("Gagal memuat data lokal:", error);
     }
 }
+*/
 
 async function syncFromServer() {
     if (!navigator.onLine) return;
@@ -1337,6 +1349,8 @@ async function _uploadFileToFirebaseStorage(file, folder = 'attachments') {
     }
 }
 
+/*
+/*
 const fetchAndCacheData = async (key, col, order = 'createdAt') => {
     try {
         const snap = await getDocs(query(col, orderBy(order, 'desc')));
@@ -1350,7 +1364,11 @@ const fetchAndCacheData = async (key, col, order = 'createdAt') => {
         toast('error', `Gagal memuat data ${key}.`);
     }
 };
+*/
+*/
 
+/*
+/*
 const masterDataConfig = {
     'projects': {
         collection: projectsCol,
@@ -1407,6 +1425,8 @@ const masterDataConfig = {
         title: 'Material'
     },
 };
+*/
+*/
 
 // FUNGSI BARU UNTUK MEMBUAT HTML SKELETON LOADER
 function _getSkeletonLoaderHTML(pageType) {
@@ -1704,6 +1724,8 @@ function _getDashboardTrendData() {
     return trends;
 }
 
+/*
+/*
 async function _logActivity(action, details = {}) {
     if (!appState.currentUser || isViewer()) return;
     try {
@@ -1730,6 +1752,8 @@ async function _logActivity(action, details = {}) {
         }
     }
 }
+*/
+*/
 
 // Real-time sync untuk master data menggunakan onSnapshot
 function subscribeToMasterData() {
@@ -1853,6 +1877,7 @@ function _setActiveListeners(requiredListeners = []) {
     });
 }
 
+/*
 function _calculateAndCacheDashboardTotals() {
     console.log("Calculating dashboard totals from appState...");
     // Logika perhitungan ini diambil langsung dari renderDashboardPage
@@ -1905,6 +1930,7 @@ function _calculateAndCacheDashboardTotals() {
         if (unpaidEl) animateNumber(unpaidEl, totalUnpaid);
     }
 }
+*/
 
 async function _processRealtimeChanges(changes, collectionName) {
     let hasChanged = false;
@@ -6510,6 +6536,7 @@ async function _compressImage(file, quality = 0.85, maxWidth = 1024) {
       reader.onerror = reject;
   });
 }
+/*
 async function _uploadFileToCloudinary(file) {
   const CLOUDINARY_CLOUD_NAME = "dcjp0fxvb";
   const CLOUDINARY_UPLOAD_PRESET = "BanFlex.Co-Upload";
@@ -6537,6 +6564,7 @@ async function _uploadFileToCloudinary(file) {
       return null;
   }
 }
+*/
 
 async function _forceResetAttendanceStatus(form) {
   const workerId = form.elements['fix-worker-id'].value;
