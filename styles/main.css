@@ -1,0 +1,29 @@
+/* =======================================================
+ * BanPlex - Main Stylesheet
+ * This file imports all other CSS modules.
+ * Order is critical for the cascade.
+ * ======================================================= */
+
+/* 1. Base Styles */
+@import url('base.css');
+
+/* 2. Layout Structure */
+@import url('layout.css');
+
+/* 3. Reusable Components */
+@import url('components.css');
+
+/* 4. Form Elements */
+@import url('forms.css');
+
+/* 5. Navigation Elements */
+@import url('navigation.css');
+
+/* 6. Feature-Specific Styles */
+@import url('features/dashboard.css');
+@import url('features/reports.css');
+@import url('features/modals.css');
+@import url('features/lists.css');
+
+/* 7. Utility Classes (should come last to allow overrides) */
+@import url('utilities.css');

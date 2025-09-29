@@ -1,0 +1,296 @@
+/* =======================================================
+ * BanPlex Styles - Layout
+ * Main app layout: app-shell, page-container, toolbars, sidebars.
+ * ======================================================= */
+
+/* Main App Layout */
+#app-shell {
+  display: flex;
+  height: 100vh;
+}
+
+.content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.page-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--spacing);
+  padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+  transition: transform 200ms cubic-bezier(.4,0,.2,1), opacity 200ms ease;
+}
+
+/* Page Transitions */
+.page-enter-from-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.page-enter-from-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.page-enter-up {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.page-enter-fade {
+  opacity: 0;
+  transform: none;
+}
+.page-exit-to-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.page-exit-to-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.page-exit-fade {
+  opacity: 0;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-container {
+    transition: none !important;
+  }
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin: .5rem var(--spacing) .5rem var(--spacing);
+  position: relative;
+  z-index: 1;
+  padding: 0;
+}
+.toolbar.sticky-toolbar {
+  position: static;
+  top: auto;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
+  padding: .5rem var(--spacing);
+  margin: 0 0 .5rem 0;
+  z-index: 1;
+}
+.dark-theme .toolbar.sticky-toolbar {
+  background: transparent;
+}
+.toolbar .search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .5rem .75rem;
+  min-height: 40px;
+  height: 40px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s ease;
+}
+.toolbar .search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.toolbar .search .material-symbols-outlined {
+  color: var(--text-dim);
+  font-size: 22px;
+}
+.toolbar .search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  background: transparent;
+  font-size: .9rem;
+  color: var(--text);
+}
+.toolbar .search input::placeholder {
+  color: var(--text-dim);
+}
+
+/* Page Header */
+.page-label {
+  position: static;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .75rem var(--spacing);
+  flex-wrap: wrap;
+}
+.page-label .title-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.page-label .app-name {
+  font-weight: 700;
+  letter-spacing: .2px;
+  font-size: var(--font-lg);
+  color: var(--text);
+}
+.page-label .page-name {
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin: 0;
+}
+.page-label .header-right {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+}
+.dark-theme .page-label .app-name,
+.dark-theme .page-label .page-name {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar (Desktop) */
+.sidebar {
+  display: none; /* Hidden on mobile by default */
+  flex-direction: column;
+  gap: 1.5rem;
+  background-color: var(--panel);
+  border-right: 1px solid var(--line);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
+}
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.5rem;
+}
+.sidebar-logo {
+  width: 36px;
+  height: auto;
+  flex-shrink: 0;
+}
+.sidebar-app-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.dark-theme .sidebar {
+  background-color: #0f172a;
+  border-right-color: #1f2937;
+}
+
+/* Auth / Guest Screen Layout */
+body.guest-mode .page-container,
+body.pending-mode .page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+body.guest-mode .sidebar,
+body.pending-mode .sidebar,
+body.guest-mode .bottom-nav,
+body.pending-mode .bottom-nav {
+    display: none !important;
+}
+
+/* Responsive Layout Adjustments */
+@media (max-width: 480px) {
+  .page-label {
+    padding: .5rem var(--spacing) .25rem var(--spacing);
+    gap: .5rem;
+  }
+  .page-label .app-name {
+    font-size: 1rem;
+  }
+  .page-label .page-name {
+    font-size: .78rem;
+  }
+  .page-label .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .toolbar.sticky-toolbar {
+    padding: .5rem var(--spacing);
+  }
+  .toolbar .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .toolbar .search {
+    min-height: 38px;
+    height: 38px;
+  }
+  .sidebar {
+    display: none !important;
+  }
+}
+
+/* Desktop Layout (Collapsible Sidebar) */
+@media (min-width: 768px) {
+  #app-shell {
+      flex-direction: row;
+  }
+  .content-wrapper {
+      height: 100vh;
+      overflow-y: auto;
+      padding-bottom: 0;
+      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-left: 80px;
+  }
+  .sidebar {
+      display: flex;
+      width: 80px;
+      padding: 1.5rem 0.75rem;
+  }
+  .sidebar .sidebar-app-name,
+  .sidebar .nav-text,
+  .sidebar .profile-text {
+      display: none;
+      white-space: nowrap;
+  }
+  .sidebar-header,
+  .sidebar-nav-item,
+  .sidebar-profile-info {
+      justify-content: center;
+  }
+  .sidebar:hover {
+      width: 240px;
+  }
+  .sidebar:hover + .content-wrapper {
+      margin-left: 240px;
+  }
+  .sidebar:hover .sidebar-app-name,
+  .sidebar:hover .nav-text,
+  .sidebar:hover .profile-text {
+      display: block;
+  }
+  .sidebar:hover .sidebar-header,
+  .sidebar:hover .sidebar-nav-item,
+  .sidebar:hover .sidebar-profile-info {
+      justify-content: flex-start;
+      gap: 1rem;
+  }
+}

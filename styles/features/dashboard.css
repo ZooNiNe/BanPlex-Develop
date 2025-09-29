@@ -1,0 +1,233 @@
+/* =======================================================
+ * BanPlex Styles - Feature: Dashboard
+ * Styles for the main dashboard page.
+ * ======================================================= */
+
+/* Balance Grid */
+.dashboard-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Default to 1 column on mobile */
+  gap: var(--spacing);
+  margin-bottom: 1.5rem;
+}
+.dashboard-balance-card {
+  position: relative;
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  justify-content: center;
+  min-height: 36px;
+}
+.dashboard-balance-card.clickable {
+  cursor: pointer;
+}
+.dashboard-balance-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.dashboard-balance-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  background-image: var(--grad);
+  opacity: .25;
+}
+.dashboard-balance-card .label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.dashboard-balance-card .value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text) !important;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+.sparkline-container {
+  height: 45px;
+  margin-top: 0.5rem;
+}
+
+/* Actions Grid */
+.dashboard-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  padding: 0;
+  margin-bottom: 1.5rem;
+  justify-items: center;
+}
+.dashboard-actions-grid.center-4 {
+  grid-template-columns: repeat(4, 80px);
+  justify-content: center;
+}
+.dashboard-actions-grid.center-3 {
+  grid-template-columns: repeat(3, 80px);
+  justify-content: center;
+}
+.dashboard-actions-grid.center-2 {
+  grid-template-columns: repeat(2, 80px);
+  justify-content: center;
+}
+.dashboard-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.dashboard-action-item .icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: .35rem;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.2s, transform .15s ease, box-shadow .2s ease;
+}
+.dashboard-action-item:hover .icon-wrapper {
+  background-color: var(--surface-muted);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.dashboard-action-item:active .icon-wrapper {
+  transform: scale(0.95);
+  box-shadow: var(--shadow-sm);
+  transition-duration: 100ms;
+}
+.dashboard-action-item .icon-wrapper .material-symbols-outlined {
+  font-size: 24px;
+}
+.dashboard-action-item .label {
+  font-weight: 500;
+  font-size: 0.6rem;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.dashboard-action-item.action-item-extra {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.actions-collapsed .action-item-extra {
+  opacity: 0;
+  transform: scale(0.8);
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 0;
+}
+.dark-theme .dashboard-action-item .icon-wrapper {
+  background-color: var(--surface-muted) !important;
+  border-color: var(--line) !important;
+}
+.dark-theme .dashboard-action-item[data-nav="tagihan"] .icon-wrapper { color: #38bdf8 !important; }
+.dark-theme .dashboard-action-item[data-nav="laporan"] .icon-wrapper { color: #4ade80 !important; }
+.dark-theme .dashboard-action-item[data-nav="stok"] .icon-wrapper { color: #facc15 !important; }
+.dark-theme .dashboard-action-item[data-nav="pengeluaran"] .icon-wrapper { color: #f87171 !important; }
+.dark-theme .dashboard-action-item[data-nav="lainnya"] .icon-wrapper,
+.dark-theme .dashboard-action-item[data-nav="pengaturan"] .icon-wrapper,
+.dark-theme .dashboard-action-item[data-nav="pemasukan"] .icon-wrapper,
+.dark-theme .dashboard-action-item[data-nav="jurnal"] .icon-wrapper,
+.dark-theme .dashboard-action-item[data-nav="simulasi"] .icon-wrapper {
+  color: #e5e7eb !important;
+}
+
+
+/* Budget Section */
+.budget-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.budget-item:first-child {
+  padding-top: 0;
+}
+.budget-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.budget-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.budget-info .project-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.budget-info .remaining-amount {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.budget-info .remaining-amount.negative {
+  color: var(--danger);
+}
+.progress-bar-container {
+  height: 6px;
+  width: 100%;
+  background-color: var(--surface-muted);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width var(--transition-base);
+  background-image: var(--grad);
+}
+.budget-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* Daily Recap Section */
+.daily-recap-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.daily-recap-item:first-child {
+  padding-top: 0;
+}
+.daily-recap-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.daily-recap-item strong {
+  font-weight: 600;
+}
+
+/* Responsive Dashboard */
+@media (min-width: 768px) {
+  .dashboard-balance-grid {
+      grid-template-columns: 1fr 1fr;
+  }
+}

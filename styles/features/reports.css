@@ -1,0 +1,146 @@
+/* =======================================================
+ * BanPlex Styles - Feature: Reports
+ * Styles for reports, charts, and data tables.
+ * ======================================================= */
+
+.report-title {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* Report Cards & Charts */
+.report-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+.report-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.report-card-chart {
+  width: 100%;
+  max-width: 220px;
+  height: 150px;
+  margin: 0 auto;
+  position: relative;
+}
+.chart-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.summary-stat-card {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  text-align: center;
+}
+.summary-stat-card .label {
+  font-size: 0.70rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.summary-stat-card .value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Report Filters */
+.report-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.date-range-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-grow: 1;
+  min-width: 220px;
+}
+.report-filter input[type="date"] {
+  flex: 1;
+  min-width: 0;
+}
+.report-filter .btn-primary {
+  margin-left: auto;
+}
+
+/* Recap/Data Tables */
+.recap-table-wrapper {
+  overflow-x: auto;
+}
+.recap-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.recap-table th, .recap-table td {
+  padding: .75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.recap-table th {
+  font-weight: 600;
+  color: var(--text-dim);
+  font-size: .85rem;
+}
+.recap-table tr:last-child td {
+  border-bottom: none;
+}
+.recap-table strong {
+  color: var(--primary);
+}
+.recap-table td.positive {
+  color: var(--success);
+}
+.recap-table td.negative {
+  color: var(--danger);
+}
+.recap-actions-cell {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Report Detail Lists */
+.report-title + .detail-list div {
+  display: flex !important;
+  grid-template-columns: unset !important;
+}
+.report-title + .detail-list dd {
+  text-align: right;
+}
+.detail-list dd.positive {
+  color: var(--success);
+}
+.detail-list dd.negative {
+  color: var(--danger);
+}
+
+/* Responsive adjustments for report details */
+@media (max-width: 767px) {
+  .detail-list > div {
+    flex-wrap: wrap;
+  }
+  .detail-list dt {
+    white-space: normal;
+  }
+}
+@media (min-width: 768px) {
+  .detail-list > div {
+    flex-wrap: nowrap;
+  }
+  .detail-list dt {
+    white-space: nowrap;
+  }
+}
