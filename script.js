@@ -95,20 +95,20 @@ function showUpdateNotification(reg) {
 }
   
 async function main() {
-  // =======================================================
-  //          SEKSI 1: KONFIGURASI & STATE GLOBAL
-  // =======================================================
-  const firebaseConfig = {
-      apiKey: "AIzaSyASl6YAgFYQ23lz-BtAIGCyiu0G3YiFmMk",
-      authDomain: "banplex-co.firebaseapp.com",
-      projectId: "banplex-co",
-      storageBucket: "banplex-co.firebasestorage.app",
-      messagingSenderId: "45113950453",
-      appId: "1:45113950453:web:3ef688c75a7054c51605bc"
-  };
 
-  const TEAM_ID = 'main';
-  const OWNER_EMAIL = 'dq060412@gmail.com';
+    // =======================================================
+    //          FASE 1: KONFIGURASI & STATE GLOBAL
+    // =======================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyASl6YAgFYQ23lz-BtAIGCyiu0G3YiFmMk",
+    authDomain: "banplex-co.firebaseapp.com",
+    projectId: "banplex-co",
+    storageBucket: "banplex-co.firebasestorage.app",
+    messagingSenderId: "45113950453",
+    appId: "1:45113950453:web:3ef688c75a7054c51605bc"
+    };
+    const TEAM_ID = 'main';
+    const OWNER_EMAIL = 'dq060412@gmail.com';
 
   const ALL_NAV_LINKS = [{
       id: 'dashboard',
@@ -239,7 +239,7 @@ async function main() {
 const localDB = new Dexie('BanPlexLocalDB');
 
 // [REVISI FINAL] Naikkan versi dan tambahkan semua index yang dibutuhkan
-localDB.version(65).stores({
+localDB.version(66).stores({
     // Data Transaksi
     expenses: '&id, projectId, date, type, status, isDeleted, needsSync, attachmentNeedsSync', // <-- 'attachmentNeedsSync' ditambahkan
     bills: '&id, expenseId, status, dueDate, type, isDeleted, needsSync',
@@ -1200,8 +1200,6 @@ async function syncFromServer() {
         let totalDocsSynced = 0;
 
         for (const [tableName, collectionRef] of Object.entries(collectionsToSync)) {
-            // [MODIFIKASI] Tambahkan 'where' pada query untuk hanya mengambil data baru/berubah
-            // Pastikan semua koleksi memiliki field 'updatedAt' agar query ini berhasil.
             const q = query(collectionRef, where("updatedAt", ">", lastSync));
             
             const snapshot = await getDocs(q);
@@ -1212,16 +1210,13 @@ async function syncFromServer() {
                     ...d.data(),
                     id: d.id,
                     serverRev: (d.data().rev || 0)
-                    // Tidak perlu field updatedAt di sini karena sudah ada dari d.data()
                 }));
                 
-                // bulkPut akan meng-update jika ID sudah ada, atau menambah jika belum ada.
                 await localDB[tableName].bulkPut(firestoreData);
                 console.log(`Tabel '${tableName}': ${snapshot.size} dokumen baru/berubah telah disinkronkan.`);
             }
         }
 
-        // Muat ulang state dari Dexie ke memori aplikasi
         await loadAllLocalDataToState();
         renderPageContent(); // Render ulang UI dengan data terbaru
         
@@ -1245,75 +1240,122 @@ async function syncToServer() {
     if (!navigator.onLine || appState.isSyncing) return;
     appState.isSyncing = true;
     toast('syncing', 'Mengirim perubahan ke server...');
+    
     try {
         let totalSynced = 0;
         
-        // --- Deletion Sync ---
         const tablesForDeletionSync = [ localDB.expenses, localDB.bills, localDB.incomes, localDB.funding_sources, localDB.attendance_records, localDB.stock_transactions, localDB.comments ];
         for (const table of tablesForDeletionSync) {
-            const itemsToDelete = await table.where('isDeleted').equals(1).toArray();
-            if (itemsToDelete.length > 0) {
-                const deleteBatch = writeBatch(db);
-                const idsToDelete = itemsToDelete.map(item => item.id);
-                idsToDelete.forEach(id => {
-                    if (id) deleteBatch.delete(doc(db, 'teams', TEAM_ID, table.name, id));
-                });
-                await deleteBatch.commit();
-                await table.bulkDelete(idsToDelete);
-                totalSynced += itemsToDelete.length;
+            try {
+                const itemsToDelete = await table.where('isDeleted').equals(1).toArray();
+                if (itemsToDelete.length > 0) {
+                    const deleteBatch = writeBatch(db);
+                    const idsToDelete = itemsToDelete.map(item => item.id);
+                    idsToDelete.forEach(id => {
+                        if (id) deleteBatch.delete(doc(db, 'teams', TEAM_ID, table.name, id));
+                    });
+                    await deleteBatch.commit();
+                    await table.bulkDelete(idsToDelete);
+                    totalSynced += itemsToDelete.length;
+                    console.log(`${itemsToDelete.length} item berhasil dihapus dari tabel '${table.name}' di server.`);
+                }
+            } catch(e) {
+                console.error(`Gagal melakukan sinkronisasi penghapusan untuk tabel '${table.name}':`, e);
+                toast('error', `Sebagian data hapus di '${table.name}' gagal disinkronkan.`);
+                continue; // Lanjut ke tabel berikutnya
             }
         }
         
-        // --- Creation/Update Sync ---
         const collectionsToSync = ['expenses', 'bills', 'incomes', 'funding_sources', 'attendance_records', 'stock_transactions', 'comments'];
         for (const tableName of collectionsToSync) {
             const itemsToSync = await localDB[tableName].where('needsSync').equals(1).toArray();
             if (itemsToSync.length === 0) continue;
             const collectionRef = collection(db, 'teams', TEAM_ID, tableName);
+
             for (const item of itemsToSync) {
-                const { needsSync, isDeleted, localAttachmentId, attachmentNeedsSync, serverRev, ...firestoreData } = item;
-                const id = firestoreData.id || generateUUID();
-                const docRef = doc(collectionRef, id);
-                await runTransaction(db, async (transaction) => {
-                    const snap = await transaction.get(docRef);
-                    const dataToWrite = { ...firestoreData, updatedAt: serverTimestamp(), id };
-                    transaction.set(docRef, dataToWrite, { merge: true });
-                });
-                await localDB[tableName].update(id, { needsSync: 0 });
-                totalSynced += 1;
+                try {
+                    const { needsSync, isDeleted, localAttachmentId, attachmentNeedsSync, serverRev, ...firestoreData } = item;
+                    
+                    Object.keys(firestoreData).forEach(key => {
+                        if (firestoreData[key] === undefined) {
+                            delete firestoreData[key];
+                        }
+                    });
+
+                    const id = firestoreData.id || generateUUID();
+                    const docRef = doc(collectionRef, id);
+                    
+                    await runTransaction(db, async (transaction) => {
+                        const snap = await transaction.get(docRef);
+                        const dataToWrite = { ...firestoreData, updatedAt: serverTimestamp(), id };
+                        transaction.set(docRef, dataToWrite, { merge: true });
+                    });
+                    
+                    await localDB[tableName].update(id, { needsSync: 0 });
+                    totalSynced += 1;
+                } catch (itemError) {
+                    console.error(`Gagal sinkronisasi item ID: ${item.id} di tabel ${tableName}. Error:`, itemError);
+                    toast('error', `Satu item di '${tableName}' gagal sinkron.`);
+                    continue; // Lanjut ke item berikutnya, tidak menghentikan seluruh proses
+                }
             }
         }
-
-        // --- Attachment Sync ---
         const expensesWithFiles = await localDB.expenses.where('attachmentNeedsSync').equals(1).toArray();
         for (const expense of expensesWithFiles) {
-             if (!expense.id) continue;
-             const fileRecord = await localDB.files.get(expense.localAttachmentId);
-             if (fileRecord && fileRecord.file) {
-                 const downloadURL = await _uploadFileToCloudinary(fileRecord.file);
-                 if (downloadURL) {
-                     await updateDoc(doc(expensesCol, expense.id), { attachmentUrl: downloadURL });
-                     await localDB.expenses.update(expense.id, { attachmentNeedsSync: 0, attachmentUrl: downloadURL });
-                     await localDB.files.delete(expense.localAttachmentId);
+             try {
+                 if (!expense.id) continue;
+                 const fileRecord = await localDB.files.get(expense.localAttachmentId);
+                 if (fileRecord && fileRecord.file) {
+                     const downloadURL = await _uploadFileToCloudinary(fileRecord.file);
+                     if (downloadURL) {
+                         await updateDoc(doc(expensesCol, expense.id), { attachmentUrl: downloadURL });
+                         await localDB.expenses.update(expense.id, { attachmentNeedsSync: 0, attachmentUrl: downloadURL });
+                         await localDB.files.delete(expense.localAttachmentId);
+                         totalSynced += 1;
+                     }
                  }
+             } catch(e) {
+                console.error(`Gagal unggah lampiran untuk expense ID: ${expense.id}:`, e);
+                toast('error', 'Satu lampiran gagal diunggah.');
+                continue; // Lanjut ke file berikutnya
              }
         }
         
         if (totalSynced > 0) {
-            toast('success', `${totalSynced} item berhasil disinkronkan.`);
+            toast('success', `${totalSynced} perubahan berhasil disinkronkan.`);
         } else {
             hideToast();
         }
     } catch (error) {
-        toast('error', 'Beberapa data gagal disinkronkan.');
-        console.error("Sync to server error:", error);
+        toast('error', 'Terjadi kesalahan umum pada proses sinkronisasi.');
+        console.error("General Sync to server error:", error);
     } finally {
         appState.isSyncing = false;
         updateSyncIndicator();
     }
-  }
-  
+}
+
 window.addEventListener('online', syncToServer);
+
+function removeItemFromUI(id) {
+    // Cari elemen di halaman yang memiliki atribut data-id yang cocok
+    const itemElement = document.querySelector(`.dense-list-item[data-id="${id}"]`);
+
+    if (itemElement) {
+        // Tambahkan style untuk transisi (bisa juga didefinisikan di CSS)
+        itemElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease, max-height 0.4s ease';
+        
+        // Terapkan style untuk memulai animasi
+        itemElement.style.opacity = '0';
+        itemElement.style.transform = 'translateX(-20px)';
+        itemElement.style.maxHeight = '0px';
+        
+        // Hapus elemen dari DOM setelah animasi selesai
+        setTimeout(() => {
+            itemElement.remove();
+        }, 400); // Durasi harus sedikit lebih lama dari transisi
+    }
+}
 
 async function _uploadFileToFirebaseStorage(file, folder = 'attachments') {
     if (!file) return null;
@@ -2175,30 +2217,57 @@ async function handleOpenSyncQueueModal() {
     }
 }
 
-async function handleDeletePendingItem(ds) {
+async function handleDeletePendingItem(buttonElement) {
+    const ds = buttonElement.dataset; // Ambil dataset dari elemen tombol
     try {
         const group = ds.group;
         if (!group) return;
+
+        // --- Logika Penghapusan Database (tetap sama) ---
         if (group === 'table') {
             const table = ds.table;
-            const localId = Number(ds.localId);
-            if (table && !Number.isNaN(localId)) {
-                await localDB[table].delete(localId);
+            const id = ds.id; // Gunakan ID utama untuk penghapusan
+            if (table && id) {
+                // Hapus berdasarkan ID utama, bukan localId, untuk konsistensi
+                await localDB[table].where('id').equals(id).delete();
             }
-        } else if (group === 'pending_payments') {
-            await localDB.pending_payments.delete(Number(ds.id));
-        } else if (group === 'pending_logs') {
-            await localDB.pending_logs.delete(Number(ds.id));
-        } else if (group === 'pending_conflicts') {
-            await localDB.pending_conflicts.delete(Number(ds.id));
+        } else if (group === 'pending_payments' || group === 'pending_logs' || group === 'pending_conflicts') {
+            await localDB[group].delete(Number(ds.id));
         }
+
+        // --- [LOGIKA BARU] Memperbarui UI secara langsung ---
+        const listItem = buttonElement.closest('.dense-list-item');
+        if (listItem) {
+            // 1. Tambahkan kelas untuk animasi keluar
+            listItem.style.transition = 'opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.2s ease';
+            listItem.style.opacity = '0';
+            listItem.style.transform = 'translateX(-20px)';
+            listItem.style.maxHeight = '0px';
+            listItem.style.padding = '0';
+            
+            // 2. Hapus elemen dari DOM setelah animasi selesai
+            setTimeout(() => {
+                listItem.remove();
+                
+                // 3. Perbarui hitungan item di header modal
+                const modal = $('#dataDetail-modal');
+                if(modal) {
+                    const countElement = modal.querySelector('.card-pad strong');
+                    if(countElement) {
+                        const currentCount = $$('.dense-list-item', modal).length;
+                        countElement.textContent = currentCount;
+                        // Sembunyikan tombol "Sinkron Semua" jika sudah kosong
+                        if(currentCount === 0) {
+                            modal.querySelector('[data-action="sync-all-pending"]').style.display = 'none';
+                        }
+                    }
+                }
+            }, 300);
+        }
+
         toast('success', 'Item dihapus dari antrean.');
-        updateSyncIndicator();
-        const modal = $('#dataDetail-modal');
-        if (modal) {
-            closeModal(modal);
-            handleOpenSyncQueueModal();
-        }
+        updateSyncIndicator(); // Tetap perbarui indikator global
+
     } catch (e) {
         console.error('Gagal menghapus item antrean:', e);
         toast('error', 'Gagal menghapus item.');
@@ -2410,88 +2479,116 @@ const simpleModal = (title, content, footer) => `<div class="modal-content simpl
 }
 
 function attachModalEventListeners(type, data, closeModalFunc) {
-  if (type === 'login') $('#google-login-btn')?.addEventListener('click', signInWithGoogle);
-  if (type === 'confirmLogout') $('#confirm-logout-btn')?.addEventListener('click', handleLogout);
-  if (type.startsWith('confirm') && type !== 'confirmExpense') {
-      $('#confirm-btn')?.addEventListener('click', () => {
-          data.onConfirm();
-          closeModalFunc();
-      });
-  }
-  if (type === 'confirmExpense') {
-      $('#confirm-paid-btn')?.addEventListener('click', () => {
-          data.onConfirm('paid');
-          closeModalFunc();
-      });
-      $('#confirm-bill-btn')?.addEventListener('click', () => {
-          data.onConfirm('unpaid');
-          closeModalFunc();
-      });
-  }
-  if (type === 'payment') {
-      $('#payment-form')?.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const amount = fmtIDR(parseFormattedNumber(e.target.elements.amount.value));
-          let onConfirm;
-          const t = e.target.dataset.type;
-          if (t === 'bill') onConfirm = () => handleProcessBillPayment(e.target);
-          else if (t === 'pinjaman' || t === 'loan') onConfirm = () => handleProcessPayment(e.target);
-          else if (t === 'individual-salary') onConfirm = () => handleProcessIndividualSalaryPayment(e.target);
-          else onConfirm = () => {};
-          createModal('confirmPayBill', {
-              message: `Anda akan membayar sebesar ${amount}. Lanjutkan?`,
-              onConfirm
-          });
-      });
-      $$('#payment-form input[inputmode="numeric"]')?.forEach(input => input.addEventListener('input', _formatNumberInput));
-  }
-  if (type === 'actionsMenu') $$('.actions-menu-item').forEach(btn => btn.addEventListener('click', () => closeModalFunc()));
-  if (type === 'manageMaster' || type === 'editMaster') {
-      const modalEl = $(`#${type}-modal`);
-      if (!modalEl) return;
-      const formId = (type === 'manageMaster')?'#add-master-item-form' : '#edit-master-form';
-      const formHandler = (type === 'manageMaster')?handleAddMasterItem : (form) => createModal('confirmEdit', {
-          onConfirm: () => {
-              handleUpdateItem(form);
-              closeModalFunc();
-          }
-      });
-      $(formId, modalEl)?.addEventListener('submit', (e) => {
-          e.preventDefault();
-          formHandler(e.target);
-      });
-      _initCustomSelects(modalEl);
-      $$('input[inputmode="numeric"]', modalEl).forEach(i => i.addEventListener('input', _formatNumberInput));
-      if (modalEl.querySelector('[data-type="staff"]')) _attachStaffFormListeners(modalEl);
-  }
-  if (type === 'editItem') {
-      const modalEl = $(`#${type}-modal`);
-      _initCustomSelects(modalEl);
-      $$('input[inputmode="numeric"]', modalEl).forEach(input => input.addEventListener('input', _formatNumberInput));
-      $('#edit-item-form')?.addEventListener('submit', (e) => {
-          e.preventDefault();
-          createModal('confirmEdit', {
-              onConfirm: () => {
-                  handleUpdateItem(e.target);
-                  closeModalFunc();
-              }
-          });
-      });
-      if (modalEl.querySelector('#material-invoice-form') || modalEl.querySelector('#edit-item-form[data-type="expense"] #invoice-items-container')) {
-          _attachPengeluaranFormListeners('material');
-      }
-  }
-  if (type === 'editAttendance') {
-      $('#edit-attendance-form')?.addEventListener('submit', (e) => {
-          e.preventDefault();
-          createModal('confirmEdit', {
-              onConfirm: () => {
-                  handleUpdateAttendance(e.target);
-                  closeModalFunc();
-              }
-          });
-      });
-  }
+    if (type === 'login') $('#google-login-btn')?.addEventListener('click', signInWithGoogle);
+    if (type === 'confirmLogout') $('#confirm-logout-btn')?.addEventListener('click', handleLogout);
+    
+    if (type.startsWith('confirm') && type !== 'confirmExpense') {
+        $('#confirm-btn')?.addEventListener('click', () => {
+            if (data.onConfirm) {
+                data.onConfirm(); // Jalankan aksi utama (misal: hapus atau simpan data)
+            }
+            // [PERBAIKAN] Tambahkan baris ini untuk menutup modal konfirmasi setelah aksi dipanggil.
+            // Modal lain yang terbuka (misalnya form edit) akan ditutup oleh logikanya sendiri di dalam onConfirm.
+            closeModalFunc();
+        });
+    }
+
+    if (type === 'confirmExpense') {
+        $('#confirm-paid-btn')?.addEventListener('click', () => {
+            if (data.onConfirm) data.onConfirm('paid');
+            closeModalFunc();
+        });
+        $('#confirm-bill-btn')?.addEventListener('click', () => {
+            if (data.onConfirm) data.onConfirm('unpaid');
+            closeModalFunc();
+        });
+    }
+
+    if (type === 'payment') {
+        $('#payment-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const amount = fmtIDR(parseFormattedNumber(e.target.elements.amount.value));
+            let onConfirm;
+            const t = e.target.dataset.type;
+
+            if (t === 'bill') onConfirm = () => handleProcessBillPayment(e.target);
+            else if (t === 'pinjaman' || t === 'loan') onConfirm = () => handleProcessPayment(e.target);
+            else if (t === 'individual-salary') onConfirm = () => handleProcessIndividualSalaryPayment(e.target);
+            else onConfirm = () => {};
+            
+            createModal('confirmPayBill', {
+                message: `Anda akan membayar sebesar ${amount}. Lanjutkan?`,
+                onConfirm: () => {
+                    onConfirm();
+                    closeModalFunc(); // Tutup modal pembayaran setelah konfirmasi
+                }
+            });
+        });
+        $$('#payment-form input[inputmode="numeric"]')?.forEach(input => input.addEventListener('input', _formatNumberInput));
+    }
+
+    if (type === 'actionsMenu') {
+        $$('.actions-menu-item').forEach(btn => btn.addEventListener('click', () => closeModalFunc()));
+    }
+
+    if (type === 'manageMaster' || type === 'editMaster') {
+        const modalEl = $(`#${type}-modal`);
+        if (!modalEl) return;
+        
+        const formId = (type === 'manageMaster') ? '#add-master-item-form' : '#edit-master-form';
+        const form = $(formId, modalEl);
+
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                if (type === 'manageMaster') {
+                    handleAddMasterItem(form);
+                } else { // type === 'editMaster'
+                    createModal('confirmEdit', {
+                        onConfirm: () => {
+                            handleUpdateMasterItem(form); 
+                            closeModal(modalEl); // Tutup modal edit
+                        }
+                    });
+                }
+            });
+        }
+        
+        _initCustomSelects(modalEl);
+        $$('input[inputmode="numeric"]', modalEl).forEach(i => i.addEventListener('input', _formatNumberInput));
+        if (modalEl.querySelector('[data-type="staff"]')) _attachStaffFormListeners(modalEl);
+    }
+
+    if (type === 'editItem') {
+        const modalEl = $(`#${type}-modal`);
+        _initCustomSelects(modalEl);
+        $$('input[inputmode="numeric"]', modalEl).forEach(input => input.addEventListener('input', _formatNumberInput));
+        $('#edit-item-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            createModal('confirmEdit', {
+                onConfirm: () => {
+                    handleUpdateItem(e.target);
+                    closeModalFunc();
+                }
+            });
+        });
+        if (modalEl.querySelector('#material-invoice-form') || modalEl.querySelector('#edit-item-form[data-type="expense"] #invoice-items-container')) {
+            _attachPengeluaranFormListeners('material');
+        }
+    }
+
+    if (type === 'editAttendance') {
+        $('#edit-attendance-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            createModal('confirmEdit', {
+                onConfirm: () => {
+                    handleUpdateAttendance(e.target);
+                    closeModalFunc();
+                }
+            });
+        });
+    }
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -2940,6 +3037,55 @@ async function renderPemasukanPage() {
     }, (err) => console.warn('Snapshot error for comments:', err));
 } catch(_) {}
 
+function _getSinglePemasukanRowHTML(item) {
+    const isTermin = !item.creditorId; // Cek apakah ini termin atau pinjaman
+    const type = isTermin ? 'termin' : 'pinjaman';
+    const title = isTermin
+        ? (appState.projects.find(p => p.id === item.projectId)?.projectName || 'Termin Proyek')
+        : (appState.fundingCreditors.find(c => c.id === item.creditorId)?.creditorName || 'Pinjaman');
+    
+    const amount = item.totalAmount || item.amount || 0;
+    const date = item.date ? _getJSDate(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' }) : 'Tanggal tidak valid';
+    const isPaid = item.status === 'paid';
+
+    let statusInfo = '';
+    if (!isTermin) {
+        const paidAmount = item.paidAmount || 0;
+        const remainingAmount = (item.totalRepaymentAmount || amount) - paidAmount;
+        statusInfo = isPaid
+            ? `<span class="status-badge positive">Lunas</span>`
+            : `<span class="status-badge warn">Sisa: ${fmtIDR(remainingAmount)}</span>`;
+    }
+
+    // Template ini harus sama persis dengan yang ada di _getListPemasukanHTML
+    return `
+        <div class="selection-checkmark"><span class="material-symbols-outlined">check_circle</span></div>
+        <div class="item-main-content" data-action="open-detail" data-id="${item.id}" data-type="${type}">
+            <strong class="item-title">${title}</strong>
+            <span class="item-subtitle">${date}</span>
+            <div class="item-details">
+                <strong class="item-amount">${fmtIDR(amount)}</strong>
+                ${statusInfo}
+            </div>
+        </div>
+    `;
+}
+
+function updateItemInUI(id, updatedData) {
+    const itemElement = document.querySelector(`.dense-list-item[data-id="${id}"]`);
+    if (itemElement) {
+        // Buat ulang hanya konten di dalamnya, bukan seluruh elemen
+        const newInnerHTML = _getSinglePemasukanRowHTML(updatedData);
+        itemElement.innerHTML = newInnerHTML;
+        // Tambahkan animasi singkat untuk menandakan ada perubahan
+        itemElement.style.transition = 'none';
+        itemElement.style.backgroundColor = 'var(--warn)';
+        setTimeout(() => {
+            itemElement.style.transition = 'background-color 0.5s ease';
+            itemElement.style.backgroundColor = '';
+        }, 100);
+    }
+}
 function upsertCommentInUI(a, b, c) {
     try {
         let sectionEl, commentData, changeType;
@@ -3027,31 +3173,38 @@ async function _rerenderPemasukanList(type) {
   _attachSwipeHandlers('#pemasukan-list-container'); 
 }
 const createMasterDataSelect = (id, label, options, selectedValue = '', masterType = null) => {
-  const selectedOption = options.find(opt => opt.value === selectedValue);
-  const selectedText = selectedOption?selectedOption.text : 'Pilih...';
-  const showMasterButton = masterType && masterType !== 'projects' && !isViewer();
-  return `
-      <div class="form-group">
-          <label>${label}</label>
-          <div class="master-data-select">
-              <div class="custom-select-wrapper">
-                  <input type="hidden" id="${id}" name="${id}" value="${selectedValue}">
-                  <button type="button" class="custom-select-trigger" ${isViewer()?'disabled' : ''}>
-                      <span>${selectedText}</span>
-                      <span class="material-symbols-outlined">arrow_drop_down</span>
-                  </button>
-                  <div class="custom-select-options">
-                      <div class="custom-select-search-wrapper">
-                          <span class="material-symbols-outlined">search</span>
-                          <input type="search" class="custom-select-search" placeholder="Cari..." autocomplete="off">
-                      </div>
-                      ${options.map(opt => `<div class="custom-select-option" data-value="${opt.value}">${opt.text}</div>`).join('')}
-                  </div>
-              </div>
-              ${showMasterButton?`<button type="button" class="btn-icon master-data-trigger" data-action="manage-master" data-type="${masterType}"><span class="material-symbols-outlined">database</span></button>` : ''}
-          </div>
-      </div>
-  `;
+    const selectedOption = options.find(opt => opt.value === selectedValue);
+    const selectedText = selectedOption ? selectedOption.text : (options.length > 0 ? options[0].text : 'Pilih...');
+    const finalSelectedValue = selectedOption ? selectedValue : (options.length > 0 ? options[0].value : '');
+
+    const showMasterButton = masterType && masterType !== 'projects' && !isViewer();
+
+    return `
+        <div class="form-group">
+            <label>${label}</label>
+            <div class="master-data-select">
+                <div class="custom-select-wrapper" data-master-type="${masterType || ''}">
+                    <input type="hidden" id="${id}" name="${id}" value="${finalSelectedValue}">
+                    <button type="button" class="custom-select-trigger" ${isViewer() ? 'disabled' : ''}>
+                        <span>${selectedText}</span>
+                        <span class="material-symbols-outlined">arrow_drop_down</span>
+                    </button>
+                    <div class="custom-select-options">
+                        <div class="custom-select-search-wrapper">
+                            <span class="material-symbols-outlined">search</span>
+                            <input type="search" class="custom-select-search" placeholder="Cari..." autocomplete="off">
+                        </div>
+                        <div class="custom-select-options-list">
+                        ${options.map(opt => `
+                            <div class="custom-select-option" data-value="${opt.value}">${opt.text}</div>
+                        `).join('')}
+                        </div>
+                    </div>
+                </div>
+                ${showMasterButton ? `<button type="button" class="btn-icon master-data-trigger" data-action="manage-master" data-type="${masterType}"><span class="material-symbols-outlined">database</span></button>` : ''}
+            </div>
+        </div>
+    `;
 };
 
 function _getFormPemasukanHTML(type) {
@@ -3488,56 +3641,74 @@ function _formatNumberInput(e) {
 }
 
 function _initCustomSelects(context = document) {
-  context.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
-      const trigger = wrapper.querySelector('.custom-select-trigger');
-      if (!trigger || trigger.disabled) return;
-      const optionsContainer = wrapper.querySelector('.custom-select-options');
-      const hiddenInput = wrapper.querySelector('input[type="hidden"]');
-      const triggerSpan = trigger.querySelector('span:first-child');
+    const closeAllSelects = (exceptThisOne) => {
+        // [PERBAIKAN] Cari semua kartu yang aktif dan nonaktifkan
+        document.querySelectorAll('.card.select-is-active').forEach(card => {
+            card.classList.remove('select-is-active');
+        });
 
-      trigger.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const isActive = wrapper.classList.contains('active');
-          $$('.custom-select-wrapper').forEach(w => w.classList.remove('active'));
-          if (!isActive) {
-              wrapper.classList.add('active');
-              // Saat dropdown dibuka, fokuskan ke input search
-              wrapper.querySelector('.custom-select-search')?.focus();
-          }
-      });
+        document.querySelectorAll('.custom-select-wrapper.active').forEach(wrapper => {
+            if (wrapper !== exceptThisOne) {
+                wrapper.classList.remove('active');
+            }
+        });
+    };
 
-      optionsContainer.addEventListener('click', e => {
-          const option = e.target.closest('.custom-select-option');
-          if (option) {
-              hiddenInput.value = option.dataset.value;
-              triggerSpan.textContent = option.textContent;
-              wrapper.classList.remove('active');
-              hiddenInput.dispatchEvent(new Event('change', {
-                  bubbles: true
-              }));
-          }
-      });
+    document.addEventListener('click', () => closeAllSelects(null));
 
-      // [TAMBAHAN] Logika untuk fungsionalitas pencarian
-      const searchInput = wrapper.querySelector('.custom-select-search');
-      if (searchInput) {
-          // Hentikan penutupan dropdown saat mengklik area search
-          searchInput.addEventListener('click', e => e.stopPropagation());
+    context.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
+        const trigger = wrapper.querySelector('.custom-select-trigger');
+        const optionsList = wrapper.querySelector('.custom-select-options-list');
+        const hiddenInput = wrapper.querySelector('input[type="hidden"]');
+        const triggerSpan = trigger.querySelector('span:first-child');
+        const searchInput = wrapper.querySelector('.custom-select-search');
+        
+        // [PERBAIKAN] Cari kartu induk dari dropdown
+        const parentCard = wrapper.closest('.card');
 
-          searchInput.addEventListener('input', e => {
-              const searchTerm = e.target.value.toLowerCase();
-              const options = wrapper.querySelectorAll('.custom-select-option');
-              options.forEach(option => {
-                  const optionText = option.textContent.toLowerCase();
-                  // Tampilkan atau sembunyikan pilihan berdasarkan hasil pencarian
-                  option.style.display = optionText.includes(searchTerm)?'' : 'none';
-              });
-          });
-      }
-      // Akhir Tambahan
-  });
+        wrapper.addEventListener('click', e => e.stopPropagation());
+
+        trigger.addEventListener('click', () => {
+            const isActive = wrapper.classList.contains('active');
+            closeAllSelects(null);
+            if (!isActive) {
+                wrapper.classList.add('active');
+                // [PERBAIKAN] Tambahkan kelas ke kartu induk saat aktif
+                if (parentCard) {
+                    parentCard.classList.add('select-is-active');
+                }
+                
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.value = '';
+                    optionsList.querySelectorAll('.custom-select-option').forEach(opt => opt.style.display = '');
+                }
+            }
+        });
+
+        if(optionsList) {
+            optionsList.addEventListener('click', e => {
+                const option = e.target.closest('.custom-select-option');
+                if (option) {
+                    hiddenInput.value = option.dataset.value;
+                    triggerSpan.textContent = option.textContent;
+                    closeAllSelects(null);
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                optionsList.querySelectorAll('.custom-select-option').forEach(option => {
+                    const optionText = option.textContent.toLowerCase();
+                    option.style.display = optionText.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+    });
 }
-
 
 function _attachPemasukanFormListeners() {
   $('#pemasukan-form')?.addEventListener('submit', handleAddPemasukan);
@@ -4166,15 +4337,17 @@ async function handleAddPengeluaran(e, type) {
             type,
             projectId,
             status,
-            formType: (type === 'material') ? (form.elements['formType']?.value || 'faktur') : undefined,
             date,
-            createdAt: new Date(), // [PERBAIKAN] Gunakan new Date() untuk waktu lokal
+            createdAt: new Date(),
             needsSync: 1,
             isDeleted: 0,
             attachmentUrl: '',
             attachmentNeedsSync: !!attachmentFile,
             localAttachmentId: null
         };
+        if (type === 'material') {
+            expenseToStore.formType = form.elements['formType']?.value || 'faktur';
+        }
 
         if (attachmentFile) {
             const compressed = await _compressImage(attachmentFile, 0.85, 1280);
@@ -4277,7 +4450,7 @@ async function handleAddPengeluaran(e, type) {
         }
 
         await loadAllLocalDataToState();
-        renderTagihanPage();
+        renderPageContent();
         syncToServer();
     } catch (error) {
         toast('error', `Gagal menyimpan data: ${error.message}`);
@@ -5295,79 +5468,148 @@ function _getManualAttendanceHTML() {
         `;
   }
 
-async function _renderManualAttendanceList(dateStr, projectId) {
-  const container = $('#manual-attendance-list-container');
-  if (!dateStr || !projectId) {
-      container.innerHTML = _getEmptyStateHTML({ icon:'event', title:'Mulai dengan Memilih Tanggal', desc:'Pilih tanggal dan proyek untuk melihat rekapan.' });
-      return;
-  }
-  container.innerHTML = `<div class="loader-container"><div class="spinner"></div></div>`;
-  const date = new Date(dateStr);
-  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-  const q = query(attendanceRecordsCol,
-      where('projectId', '==', projectId),
-      where('date', '>=', startOfDay),
-      where('date', '<=', endOfDay),
-      where('type', '==', 'manual')
-  );
-  const snap = await getDocs(q);
-  const existingRecords = new Map(snap.docs.map(d => [d.data().workerId, d.data()]));
+  async function _renderManualAttendanceList(dateStr, projectId) {
+    const container = $('#manual-attendance-list-container');
+    if (!dateStr || !projectId) {
+        container.innerHTML = _getEmptyStateHTML({ icon:'event', title:'Mulai dengan Memilih Tanggal', desc:'Pilih tanggal dan proyek untuk melihat rekapan.' });
+        return;
+    }
+    container.innerHTML = `<div class="loader-container"><div class="spinner"></div></div>`;
+    
+    const date = new Date(dateStr);
+    const startOfDay = new Date(new Date(date).setHours(0, 0, 0, 0));
+    const endOfDay = new Date(new Date(date).setHours(23, 59, 59, 999));
 
-  const activeWorkers = appState.workers.filter(w => w.status === 'active');
-  if (activeWorkers.length === 0) {
-      container.innerHTML = `<p class="empty-state">Tidak ada pekerja aktif.</p>`;
-      return;
-  }
-  const listHTML = activeWorkers.map(worker => {
-      const dailyWage = worker.projectWages?.[projectId] || 0;
-      const existing = existingRecords.get(worker.id);
-      const currentStatus = existing?.attendanceStatus || 'absent';
-      let currentPay = 0;
-      if (currentStatus === 'full_day') currentPay = dailyWage;
-      else if (currentStatus === 'half_day') currentPay = dailyWage / 2;
+    // Ambil data absensi dari localDB untuk tanggal & proyek yang dipilih
+    const existingRecords = new Map();
+    const recordsOnDate = await localDB.attendance_records
+        .where('date').between(startOfDay, endOfDay)
+        .and(rec => rec.projectId === projectId && rec.type === 'manual' && !rec.isDeleted)
+        .toArray();
+    recordsOnDate.forEach(rec => existingRecords.set(rec.workerId, rec));
 
-      return `
-              <div class="manual-attendance-item card" data-daily-wage="${dailyWage}">
-                  <div class="worker-info">
-                      <strong>${worker.workerName}</strong>
-                      <span class="worker-wage" data-pay="${currentPay}">${fmtIDR(currentPay)}</span>
-                  </div>
-                  <div class="attendance-status-selector" data-worker-id="${worker.id}">
-                      <label>
-                          <input type="radio" name="status_${worker.id}" value="full_day" ${currentStatus === 'full_day'?'checked' : ''} ${isViewer()?'disabled' : ''}>
-                          <span>Hadir</span>
-                      </label>
-                      <label>
-                          <input type="radio" name="status_${worker.id}" value="half_day" ${currentStatus === 'half_day'?'checked' : ''} ${isViewer()?'disabled' : ''}>
-                          <span>1/2 Hari</span>
-                      </label>
-                      <label>
-                          <input type="radio" name="status_${worker.id}" value="absent" ${currentStatus === 'absent'?'checked' : ''} ${isViewer()?'disabled' : ''}>
-                          <span>Absen</span>
-                      </label>
-                  </div>
-              </div>
-          `;
-  }).join('');
-  container.innerHTML = listHTML;
-  if (!isViewer()) {
-      container.querySelectorAll('.attendance-status-selector input[type="radio"]').forEach(radio => {
-          radio.addEventListener('change', (e) => {
-              const card = e.target.closest('.manual-attendance-item');
-              const wageEl = card.querySelector('.worker-wage');
-              const dailyWage = Number(card.dataset.dailyWage);
-              let newPay = 0;
-              if (e.target.value === 'full_day') newPay = dailyWage;
-              else if (e.target.value === 'half_day') newPay = dailyWage / 2;
+    const activeWorkers = appState.workers.filter(w => w.status === 'active');
+    if (activeWorkers.length === 0) {
+        container.innerHTML = `<p class="empty-state">Tidak ada pekerja aktif.</p>`;
+        return;
+    }
 
-              wageEl.textContent = fmtIDR(newPay);
-              wageEl.dataset.pay = newPay;
-          });
-      });
-  }
+    const listHTML = activeWorkers.map(worker => {
+        const existing = existingRecords.get(worker.id);
+        const currentStatus = existing?.attendanceStatus || 'absent';
+        const currentJobRole = existing?.jobRole || '';
+
+        const wageOptions = worker.projectWages?.[projectId] || {};
+        let defaultWage = 0;
+        let defaultRole = '';
+
+        if (Object.keys(wageOptions).length > 0) {
+            for (const roleName in wageOptions) {
+                const wageAmount = wageOptions[roleName];
+                let isSelected = false;
+                if (currentJobRole) {
+                    isSelected = (roleName === currentJobRole);
+                } else if (roleName.toLowerCase().includes('default')) {
+                    isSelected = true;
+                }
+                if (isSelected) {
+                    defaultWage = wageAmount;
+                    defaultRole = roleName;
+                }
+            }
+            // Jika setelah loop tidak ada yang terpilih, pilih yang pertama
+            if (!defaultRole) {
+                defaultRole = Object.keys(wageOptions)[0];
+                defaultWage = wageOptions[defaultRole];
+            }
+        }
+        
+        let calculatedPay = 0;
+        if(currentStatus === 'full_day') calculatedPay = defaultWage;
+        if(currentStatus === 'half_day') calculatedPay = defaultWage / 2;
+        
+        // --- [BAGIAN UTAMA PERBAIKAN HTML] ---
+        return `
+            <div class="manual-attendance-item card">
+                <div class="attendance-card-main">
+                    <div class="attendance-card-left">
+                        <strong>${worker.workerName}</strong>
+                        <span class="worker-wage" data-pay="${calculatedPay}">${fmtIDR(calculatedPay)}</span>
+                    </div>
+                    <div class="attendance-card-right">
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 0.8rem; margin-bottom: 4px;">Peran / Tugas Hari Ini</label>
+                            
+                            <div class="custom-select-wrapper">
+                                <input type="hidden" class="wage-role-value" name="wage_role_selector_${worker.id}" value="${defaultWage}">
+                                <button type="button" class="custom-select-trigger" ${isViewer() ? 'disabled' : ''}>
+                                    <span>${defaultRole || 'Tidak ada tarif'}</span>
+                                    <span class="material-symbols-outlined">arrow_drop_down</span>
+                                </button>
+                                <div class="custom-select-options">
+                                     <div class="custom-select-options-list">
+                                        ${Object.keys(wageOptions).length > 0 ? Object.entries(wageOptions).map(([roleName, wageAmount]) => `
+                                            <div class="custom-select-option" data-value="${wageAmount}">${roleName}</div>
+                                        `).join('') : '<div class="custom-select-option" data-value="0">Tidak ada tarif</div>'}
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="attendance-status-selector" data-worker-id="${worker.id}">
+                    <label><input type="radio" name="status_${worker.id}" value="full_day" ${currentStatus === 'full_day'?'checked' : ''} ${isViewer()?'disabled' : ''}><span>Hadir</span></label>
+                    <label><input type="radio" name="status_${worker.id}" value="half_day" ${currentStatus === 'half_day'?'checked' : ''} ${isViewer()?'disabled' : ''}><span>1/2 Hari</span></label>
+                    <label><input type="radio" name="status_${worker.id}" value="absent" ${currentStatus === 'absent'?'checked' : ''} ${isViewer()?'disabled' : ''}><span>Absen</span></label>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = listHTML;
+
+    // --- [BAGIAN UTAMA PERBAIKAN JAVASCRIPT] ---
+    if (!isViewer()) {
+        const _updatePay = (el) => {
+            const card = el.closest('.manual-attendance-item');
+            if (!card) return; // Pengaman jika elemen tidak ditemukan
+
+            // KUNCI PERBAIKAN: Baca dari input tersembunyi, bukan <select>
+            const hiddenInput = card.querySelector('.wage-role-value');
+            const status = card.querySelector('input[type="radio"]:checked')?.value || 'absent';
+            const wageEl = card.querySelector('.worker-wage');
+            
+            // Pengaman jika hiddenInput tidak ada
+            if (!hiddenInput || !wageEl) {
+                console.error("Elemen penting tidak ditemukan di kartu:", card);
+                return;
+            }
+
+            const selectedWage = parseFloat(hiddenInput.value); // Nilai upah ada di sini
+            let newPay = 0;
+            if (status === 'full_day') newPay = selectedWage;
+            else if (status === 'half_day') newPay = selectedWage / 2;
+            
+            wageEl.textContent = fmtIDR(newPay);
+            wageEl.dataset.pay = newPay;
+        };
+        
+        // Listener untuk tombol radio (tetap sama)
+        container.querySelectorAll('.attendance-status-selector input').forEach(el => {
+            el.addEventListener('change', (e) => _updatePay(e.target));
+        });
+
+        // Panggil inisialisasi untuk membuat dropdown kustom menjadi interaktif
+        _initCustomSelects(container);
+
+        // Tambahkan listener baru untuk perubahan dari dropdown kustom
+        container.querySelectorAll('.wage-role-value').forEach(hiddenInput => {
+            hiddenInput.addEventListener('change', (e) => _updatePay(e.target));
+        });
+    }
 }
-async function handleDeleteSingleAttendance(recordId) {
+
+  async function handleDeleteSingleAttendance(recordId) {
   // Cari data absensi untuk ditampilkan di pesan konfirmasi
   const record = appState.attendanceRecords.find(r => r.id === recordId);
   const worker = record?appState.workers.find(w => w.id === record.workerId) : null;
@@ -5400,191 +5642,296 @@ async function handleDeleteSingleAttendance(recordId) {
   });
 }
 async function handleEditManualAttendanceModal(recordId) {
-  const record = appState.attendanceRecords.find(r => r.id === recordId);
-  if (!record) {
-      toast('error', 'Data absensi tidak ditemukan.');
-      return;
-  }
-  const worker = appState.workers.find(w => w.id === record.workerId);
-  let content = '';
-  const dateString = _getJSDate(record.date).toLocaleDateString('id-ID');
-  // Cek apakah absensi manual atau timestamp
-  if (record.type === 'manual') {
-      content = `
-              <form id="edit-attendance-form" data-id="${recordId}" data-type="manual" data-async="true" method="PUT" data-endpoint="/api/attendance/${recordId}" data-success-msg="Absensi diperbarui">
-                  <p>Mengedit absensi untuk <strong>${worker?.workerName || 'N/A'}</strong> pada tanggal <strong>${dateString}</strong>.</p>
-                  <div class="form-group">
-                      <label>Status Kehadiran</label>
-                      <div class="attendance-status-selector">
-                          <label><input type="radio" name="status" value="full_day" ${record.attendanceStatus === 'full_day'?'checked' : ''}><span>Hadir</span></label>
-                          <label><input type="radio" name="status" value="half_day" ${record.attendanceStatus === 'half_day'?'checked' : ''}><span>1/2 Hari</span></label>
-                      </div>
-                  </div>
-                  <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-              </form>`;
-  } else { // type === 'timestamp'
-      const checkInTime = _getJSDate(record.checkIn).toTimeString().slice(0, 5);
-      const checkOutTime = record.checkOut?_getJSDate(record.checkOut).toTimeString().slice(0, 5) : '';
-      content = `
-              <form id="edit-attendance-form" data-id="${recordId}" data-type="timestamp" data-async="true" method="PUT" data-endpoint="/api/attendance/${recordId}" data-success-msg="Absensi diperbarui">
-                  <p>Mengedit absensi untuk <strong>${worker?.workerName || 'N/A'}</strong> pada tanggal <strong>${dateString}</strong>.</p>
-                  <div class="form-group"><label>Jam Masuk</label><input type="time" name="checkIn" value="${checkInTime}" required></div>
-                  <div class="form-group"><label>Jam Keluar</label><input type="time" name="checkOut" value="${checkOutTime}"></div>
-                  <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-              </form>`;
-  }
+    const record = appState.attendanceRecords.find(r => r.id === recordId);
+    if (!record) {
+        toast('error', 'Data absensi tidak ditemukan.');
+        return;
+    }
+    await Promise.all([
+        fetchAndCacheData('workers', workersCol, 'workerName'),
+        fetchAndCacheData('projects', projectsCol, 'projectName')
+    ]);
 
-  createModal('editAttendance', {
-      title: 'Edit Absensi',
-      content
-  });
+    const worker = appState.workers.find(w => w.id === record.workerId);
+    if (!worker) {
+        toast('error', 'Data pekerja terkait tidak ditemukan.');
+        return;
+    }
+
+    let content = '';
+    const dateString = _getJSDate(record.date).toLocaleDateString('id-ID');
+
+    if (record.type === 'manual') {
+        const projectOptions = appState.projects.map(p => ({ value: p.id, text: p.projectName }));
+        
+        // Siapkan opsi peran berdasarkan proyek yang dipilih saat ini
+        const currentWageOptions = worker.projectWages?.[record.projectId] || {};
+        const roleOptions = Object.keys(currentWageOptions).map(roleName => ({
+            value: roleName,
+            text: `${roleName} - ${fmtIDR(currentWageOptions[roleName])}`
+        }));
+
+        content = `
+            <form id="edit-attendance-form" data-id="${recordId}" data-type="manual">
+                <p>Mengedit absensi untuk <strong>${worker.workerName}</strong> pada tanggal <strong>${dateString}</strong>.</p>
+                
+                ${createMasterDataSelect('edit-attendance-project', 'Ubah Proyek', projectOptions, record.projectId)}
+                
+                <div id="edit-attendance-role-container">
+                    ${createMasterDataSelect('edit-attendance-role', 'Ubah Peran/Tugas', roleOptions, record.jobRole)}
+                </div>
+
+                <div class="form-group">
+                    <label>Upah Kustom (Isi untuk menimpa upah peran)</label>
+                    <input type="text" name="customWage" inputmode="numeric" placeholder="mis. 200.000" value="${record.customWage ? new Intl.NumberFormat('id-ID').format(record.customWage) : ''}">
+                </div>
+
+                <div class="form-group">
+                    <label>Status Kehadiran</label>
+                    <div class="attendance-status-selector">
+                        <label><input type="radio" name="status" value="full_day" ${record.attendanceStatus === 'full_day' ? 'checked' : ''}><span>Hadir</span></label>
+                        <label><input type="radio" name="status" value="half_day" ${record.attendanceStatus === 'half_day' ? 'checked' : ''}><span>1/2 Hari</span></label>
+                        <label><input type="radio" name="status" value="absent" ${record.attendanceStatus === 'absent' ? 'checked' : ''}><span>Absen</span></label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+            </form>`;
+        
+        } else { // type === 'timestamp'
+        const checkInTime = _getJSDate(record.checkIn).toTimeString().slice(0, 5);
+        const checkOutTime = record.checkOut ? _getJSDate(record.checkOut).toTimeString().slice(0, 5) : '';
+        content = `
+            <form id="edit-attendance-form" data-id="${recordId}" data-type="timestamp">
+                <p>Mengedit absensi untuk <strong>${worker?.workerName || 'N/A'}</strong> pada tanggal <strong>${dateString}</strong>.</p>
+                <div class="form-group"><label>Jam Masuk</label><input type="time" name="checkIn" value="${checkInTime}" required></div>
+                <div class="form-group"><label>Jam Keluar</label><input type="time" name="checkOut" value="${checkOutTime}"></div>
+                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+            </form>`;
+    }
+
+    const modalEl = createModal('editAttendance', { title: 'Edit Absensi', content });
+
+    if (modalEl && record.type === 'manual') {
+        _initCustomSelects(modalEl);
+        $('input[name="customWage"]', modalEl).addEventListener('input', _formatNumberInput);
+
+        $('#edit-attendance-project', modalEl).addEventListener('change', (e) => {
+            const newProjectId = e.target.value;
+            const newWageOptions = worker.projectWages?.[newProjectId] || {};
+            const newRoleOptions = Object.keys(newWageOptions).map(roleName => ({
+                value: roleName,
+                text: `${roleName} - ${fmtIDR(newWageOptions[roleName])}`
+            }));
+            
+            const roleContainer = $('#edit-attendance-role-container', modalEl);
+            roleContainer.innerHTML = createMasterDataSelect('edit-attendance-role', 'Ubah Peran/Tugas', newRoleOptions, '');
+            _initCustomSelects(roleContainer); // Inisialisasi ulang dropdown peran yang baru
+        });
+    }
 }
 
 async function handleUpdateAttendance(form) {
-  const recordId = form.dataset.id;
-  const recordType = form.dataset.type;
+    const recordId = form.dataset.id;
+    const recordType = form.dataset.type;
 
-  const record = appState.attendanceRecords.find(r => r.id === recordId);
-  if (!record) {
-      toast('error', 'Data absensi asli tidak ditemukan.');
-      return;
-  }
-  toast('syncing', 'Memperbarui absensi...');
-  try {
-      const dataToUpdate = {};
-      if (recordType === 'manual') {
-          const newStatus = form.elements.status.value;
-          let newTotalPay = 0;
-          if (newStatus === 'full_day') newTotalPay = record.dailyWage || 0;
-          else if (newStatus === 'half_day') newTotalPay = (record.dailyWage || 0) / 2;
+    const record = appState.attendanceRecords.find(r => r.id === recordId);
+    if (!record) {
+        toast('error', 'Data absensi asli tidak ditemukan.');
+        return;
+    }
+    toast('syncing', 'Memperbarui absensi...');
+    try {
+        const dataToUpdate = {};
+        
+        if (recordType === 'manual') {
+            const newStatus = form.elements.status.value;
+            const newProjectId = form.elements['edit-attendance-project'].value;
+            const newJobRole = form.elements['edit-attendance-role'].value;
+            const customWage = parseFormattedNumber(form.elements.customWage.value);
 
-          dataToUpdate.attendanceStatus = newStatus;
-          dataToUpdate.totalPay = newTotalPay;
-      } else { // type === 'timestamp'
-          const date = _getJSDate(record.date);
-          const [inH, inM] = form.elements.checkIn.value.split(':');
-          const newCheckIn = new Date(date);
-          newCheckIn.setHours(inH, inM);
+            let newTotalPay = 0;
+            let baseWage = 0;
 
-          dataToUpdate.checkIn = Timestamp.fromDate(newCheckIn);
-          if (form.elements.checkOut.value) {
-              const [outH, outM] = form.elements.checkOut.value.split(':');
-              const newCheckOut = new Date(date);
-              newCheckOut.setHours(outH, outM);
-              const hours = (newCheckOut - newCheckIn) / 3600000;
-              const normalHours = Math.min(hours, 8);
-              const overtimeHours = Math.max(0, hours - 8);
-              const normalPay = normalHours * (record.hourlyWage || 0);
-              const overtimePay = overtimeHours * (record.hourlyWage || 0) * 1.5;
-              dataToUpdate.checkOut = Timestamp.fromDate(newCheckOut);
-              dataToUpdate.workHours = hours;
-              dataToUpdate.totalPay = normalPay + overtimePay;
-              dataToUpdate.status = 'completed';
-          }
-      }
+            // [PERBAIKAN KUNCI LOGIKA UPAH]
+            // Prioritas 1: Gunakan upah kustom jika diisi
+            if (customWage > 0) {
+                baseWage = customWage;
+            } 
+            // Prioritas 2: Cari upah dari peran yang baru dipilih
+            else if (newProjectId && newJobRole) {
+                const worker = appState.workers.find(w => w.id === record.workerId);
+                baseWage = worker?.projectWages?.[newProjectId]?.[newJobRole] || 0;
+            }
+            
+            // Kalkulasi upah akhir berdasarkan status
+            if (newStatus === 'full_day') {
+                newTotalPay = baseWage;
+            } else if (newStatus === 'half_day') {
+                newTotalPay = baseWage / 2;
+            } else if (newStatus === 'absent') {
+                newTotalPay = 0;
+            }
 
-      await optimisticUpdateDoc(attendanceRecordsCol, recordId, dataToUpdate);
-      _logActivity('Mengedit Absensi', {
-          recordId,
-          ...dataToUpdate
-      });
-      toast('success', 'Absensi berhasil diperbarui.');
-      renderPageContent(); // Refresh halaman
-  } catch (error) {
-      toast('error', 'Gagal memperbarui absensi.');
-      console.error(error);
-  }
+            // Siapkan data untuk di-update
+            dataToUpdate.attendanceStatus = newStatus;
+            dataToUpdate.totalPay = newTotalPay;
+            dataToUpdate.projectId = newProjectId;
+            dataToUpdate.jobRole = newJobRole;
+            dataToUpdate.customWage = customWage > 0 ? customWage : null; // Simpan upah kustom
+            dataToUpdate.dailyWage = customWage > 0 ? 0 : baseWage; // Simpan upah peran jika tidak ada kustom
+          
+        } else { // type === 'timestamp'
+            const date = _getJSDate(record.date);
+            const [inH, inM] = form.elements.checkIn.value.split(':');
+            const newCheckIn = new Date(date);
+            newCheckIn.setHours(inH, inM);
+
+            dataToUpdate.checkIn = Timestamp.fromDate(newCheckIn);
+            if (form.elements.checkOut.value) {
+                const [outH, outM] = form.elements.checkOut.value.split(':');
+                const newCheckOut = new Date(date);
+                newCheckOut.setHours(outH, outM);
+
+                // Pastikan checkout tidak lebih awal dari checkin
+                if (newCheckOut < newCheckIn) {
+                    toast('error', 'Jam keluar tidak boleh lebih awal dari jam masuk.');
+                    return;
+                }
+
+                const hours = (newCheckOut - newCheckIn) / 3600000;
+                const normalHours = Math.min(hours, 8);
+                const overtimeHours = Math.max(0, hours - 8);
+                const normalPay = normalHours * (record.hourlyWage || 0);
+                const overtimePay = overtimeHours * (record.hourlyWage || 0) * 1.5;
+                
+                dataToUpdate.checkOut = Timestamp.fromDate(newCheckOut);
+                dataToUpdate.workHours = hours;
+                dataToUpdate.normalHours = normalHours;
+                dataToUpdate.overtimeHours = overtimeHours;
+                dataToUpdate.totalPay = normalPay + overtimePay;
+                dataToUpdate.status = 'completed';
+            } else {
+                // Jika checkout dikosongkan, kembalikan status ke 'checked_in'
+                dataToUpdate.checkOut = null;
+                dataToUpdate.workHours = 0;
+                dataToUpdate.totalPay = 0;
+                dataToUpdate.status = 'checked_in';
+            }
+        }
+
+        await localDB.attendance_records.where('id').equals(recordId).modify({ ...dataToUpdate, needsSync: 1 });
+        await optimisticUpdateDoc(attendanceRecordsCol, recordId, dataToUpdate);
+        
+        await loadAllLocalDataToState(); 
+        
+        _logActivity('Mengedit Absensi', { recordId, ...dataToUpdate });
+        toast('success', 'Absensi berhasil diperbarui.');
+        
+        renderPageContent(); 
+        closeModal($('#editAttendance-modal'));
+        
+        // Jika modal jurnal harian masih ada, refresh juga isinya
+        if ($('#dataDetail-modal')) {
+            handleViewJurnalHarianModal(_getJSDate(record.date).toISOString().slice(0, 10));
+        }
+
+    } catch (error) {
+        toast('error', 'Gagal memperbarui absensi.');
+        console.error(error);
+    }
 }
+
 async function handleSaveManualAttendance(e) {
-  e.preventDefault();
-  const form = e.target;
-  const dateStr = form.querySelector('#manual-attendance-date').value;
-  const projectId = form.querySelector('#manual-attendance-project').value;
+    e.preventDefault();
+    const form = e.target;
+    const dateStr = form.querySelector('#manual-attendance-date').value;
+    const projectId = form.querySelector('#manual-attendance-project').value;
+    const date = new Date(dateStr);
+  
+    if (!projectId) {
+        toast('error', 'Proyek harus dipilih.');
+        return;
+    }
+    toast('syncing', 'Menyimpan absensi lokal...');
+  
+    try {
+        await localDB.transaction('rw', localDB.attendance_records, async () => {
+            const workersOnForm = $$('.attendance-status-selector', form);
+            
+            const startOfDay = new Date(new Date(date).setHours(0, 0, 0, 0));
+            const endOfDay = new Date(new Date(date).setHours(23, 59, 59, 999));
+  
+            const existingRecordsOnDate = await localDB.attendance_records
+              .where('date').between(startOfDay, endOfDay)
+              .and(rec => rec.projectId === projectId && rec.type === 'manual')
+              .toArray();
+            const existingRecordsMap = new Map(existingRecordsOnDate.map(rec => [rec.workerId, rec]));
+  
+            for (const workerEl of workersOnForm) {
+                const workerId = workerEl.dataset.workerId;
+                const statusInput = workerEl.querySelector('input:checked');
+                if (!statusInput) continue;
+  
+                const status = statusInput.value;
+                const card = workerEl.closest('.manual-attendance-item');
+                
+                // [PERBAIKAN KUNCI DI SINI]
+                // Baca data dari elemen dropdown kustom, bukan <select>
+                const hiddenInput = card.querySelector('.wage-role-value');
+                const triggerSpan = card.querySelector('.custom-select-trigger span');
+                
+                if (!hiddenInput || !triggerSpan) {
+                    console.error('Elemen dropdown kustom tidak ditemukan untuk pekerja:', workerId);
+                    continue; // Lanjut ke pekerja berikutnya jika elemen tidak ada
+                }
 
-  // [PERBAIKAN] Gunakan objek Date JavaScript standar
-  const date = new Date(dateStr);
-  if (!projectId) {
-      toast('error', 'Proyek harus dipilih.');
-      return;
-  }
-  toast('syncing', 'Menyimpan absensi lokal...');
-  try {
-      const workers = $$('.attendance-status-selector', form);
+                const selectedWage = parseFloat(hiddenInput.value);
+                const selectedRole = triggerSpan.textContent.trim();
+                // --- AKHIR PERBAIKAN ---
 
-      await localDB.transaction('rw', localDB.attendance_records, async () => {
-          for (const workerEl of workers) {
-              const workerId = workerEl.dataset.workerId;
-              const statusInput = workerEl.querySelector('input:checked');
-              if (!statusInput) continue;
-
-              const status = statusInput.value;
-              const worker = appState.workers.find(w => w.id === workerId);
-              const dailyWage = worker?.projectWages?.[projectId] || 0;
-              let pay = 0;
-              if (status === 'full_day') pay = dailyWage;
-              if (status === 'half_day') pay = dailyWage / 2;
-              const existingRecord = await localDB.attendance_records
-                  .where({
-                      workerId: workerId,
-                      projectId: projectId,
-                      type: 'manual'
-                  })
-                  .filter(rec => _getJSDate(rec?.date).toISOString().slice(0, 10) === dateStr)
-                  .first();
-              if (existingRecord) {
-                  if (status === 'absent') {
-                      await localDB.attendance_records.update(existingRecord.localId, {
-                          isDeleted: 1,
-                          needsSync: 1
-                      });
-                  } else {
-                      await localDB.attendance_records.update(existingRecord.localId, {
-                          attendanceStatus: status,
-                          totalPay: pay,
-                          needsSync: 1,
-                          isDeleted: 0
-                      });
-                  }
-              } else {
-                  if (status !== 'absent') {
-                      await localDB.attendance_records.add({
-                          id: generateUUID(),
-                          workerId,
-                          workerName: worker.workerName,
-                          projectId,
-                          date,
-                          attendanceStatus: status,
-                          totalPay: pay,
-                          dailyWage,
-                          isPaid: false,
-                          type: 'manual',
-                          status: 'completed',
-                          needsSync: 1,
-                          isDeleted: 0,
-                          createdAt: new Date() // [PERBAIKAN] Gunakan new Date()
-                      });
-                  }
-              }
-          }
-      });
-      // [PERBAIKAN UTAMA] Hapus 'await' dari sini agar tidak macet saat offline
-      _logActivity(`Menyimpan Absensi Manual (Lokal)`, {
-          date: dateStr,
-          projectId
-      });
-
-      toast('success', 'Absensi berhasil disimpan.');
-
-      await loadAllLocalDataToState();
-      _renderManualAttendanceList(dateStr, projectId);
-      syncToServer();
-  } catch (error) {
-      toast('error', 'Gagal menyimpan absensi.');
-      console.error(error);
-  }
+                const worker = appState.workers.find(w => w.id === workerId);
+                
+                let pay = 0;
+                if (status === 'full_day') pay = selectedWage;
+                if (status === 'half_day') pay = selectedWage / 2;
+                
+                const existingRecord = existingRecordsMap.get(workerId);
+                
+                if (existingRecord) {
+                    if (status === 'absent') {
+                        await localDB.attendance_records.update(existingRecord.localId, { isDeleted: 1, needsSync: 1 });
+                    } else {
+                        await localDB.attendance_records.update(existingRecord.localId, {
+                            attendanceStatus: status,
+                            totalPay: pay,
+                            jobRole: selectedRole,
+                            needsSync: 1, isDeleted: 0
+                        });
+                    }
+                } else {
+                    if (status !== 'absent') {
+                        await localDB.attendance_records.add({
+                            id: generateUUID(),
+                            workerId, workerName: worker.workerName, projectId, date,
+                            attendanceStatus: status,
+                            totalPay: pay,
+                            jobRole: selectedRole,
+                            isPaid: false, type: 'manual', status: 'completed',
+                            needsSync: 1, isDeleted: 0, createdAt: new Date()
+                        });
+                    }
+                }
+            }
+        });
+        _logActivity(`Menyimpan Absensi Manual (Lokal)`, { date: dateStr, projectId });
+        toast('success', 'Absensi berhasil disimpan.');
+        await _renderManualAttendanceList(dateStr, projectId);
+        syncToServer();
+    } catch (error) {
+        toast('error', 'Gagal menyimpan absensi.');
+        console.error(error);
+    }
 }
-
-// GANTI SELURUH FUNGSI INI
 
 async function renderJurnalPage() {
     const container = $('.page-container');
@@ -5881,8 +6228,9 @@ async function _renderJurnalPerPekerjaView(container) {
     }).join('');
     container.innerHTML = `<div style="padding-bottom: 2rem;">${listHTML}</div>`;
   }
+// GANTI SELURUH FUNGSI INI DI script.js
 
-  async function handleViewJurnalHarianModal(dateStr) {
+async function handleViewJurnalHarianModal(dateStr) {
     toast('syncing', 'Memuat detail jurnal...');
     await Promise.all([
         fetchAndCacheData('projects', projectsCol, 'projectName'),
@@ -5910,18 +6258,28 @@ async function _renderJurnalPerPekerjaView(container) {
         acc[projectId].push(rec);
         return acc;
     }, {});
+    
     const projectSectionsHTML = Object.entries(workersByProject).map(([projectId, records]) => {
         const project = appState.projects.find(p => p.id === projectId);
-        const projectName = project?project.projectName : 'Proyek Tidak Diketahui';
+        const projectName = project ? project.projectName : 'Proyek Tidak Diketahui';
+        
         const workersHTML = records.sort((a, b) => (a.workerName || '').localeCompare(b.workerName || '')).map(rec => {
             let statusBadge = '';
             if (rec.attendanceStatus === 'full_day') statusBadge = `<span class="status-badge status-hadir">Hadir</span>`;
             else if (rec.attendanceStatus === 'half_day') statusBadge = `<span class="status-badge status-setengah">1/2 Hari</span>`;
             else statusBadge = `<span class="status-badge status-absen">Absen</span>`;
 
-            // [PERBAIKAN] Ambil nama pekerja dari data master untuk konsistensi
             const worker = appState.workers.find(w => w.id === rec.workerId);
-            const workerName = worker?worker.workerName : (rec.workerName || 'Pekerja Dihapus');
+            const workerName = worker ? worker.workerName : (rec.workerName || 'Pekerja Dihapus');
+
+            // [PERBAIKAN KUNCI DI SINI]
+            // Tambahkan tombol edit jika pengguna bukan 'Viewer'
+            const editButtonHTML = isViewer() ? '' : `
+                <button class="btn-icon" data-action="edit-attendance" data-id="${rec.id}" title="Edit Absensi">
+                    <span class="material-symbols-outlined">edit</span>
+                </button>
+            `;
+            // --- AKHIR PERBAIKAN ---
 
             return `
             <div class="jurnal-pekerja-item card">
@@ -5932,9 +6290,11 @@ async function _renderJurnalPerPekerjaView(container) {
                     <strong>${fmtIDR(rec.totalPay || 0)}</strong>
                     ${statusBadge}
                 </div>
+                ${editButtonHTML} 
             </div>
             `;
         }).join('');
+        
         return `
             <h5 class="detail-section-title">${projectName}</h5>
             <div class="jurnal-pekerja-list">${workersHTML}</div>
@@ -5948,12 +6308,12 @@ async function _renderJurnalPerPekerjaView(container) {
         </div>
         ${projectSectionsHTML}
     `;
+    
     createModal('dataDetail', {
         title: `Jurnal Harian: ${formattedDate}`,
         content
     });
 }
-
 
 async function _renderRekapGajiTabs(container) {
     const tabs = [{
@@ -6015,35 +6375,117 @@ async function _renderRekapGajiTabs(container) {
 }
 
 function _getSalaryRecapHTML() {
-  const today = new Date();
-  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-  const todayStr = today.toISOString().slice(0, 10);
-  return `
-      <div class="card card-pad">
-          <h5 class="section-title-owner" style="margin-top:0;">Pilih Periode Rekap</h5>
-          <div class="recap-filters">
-              <div class="form-group"><label>Tanggal Mulai</label><input type="date" id="recap-start-date" value="${firstDayOfMonth}" ${isViewer()?'disabled' : ''}></div>
-              <div class="form-group"><label>Tanggal Selesai</label><input type="date" id="recap-end-date" value="${todayStr}" ${isViewer()?'disabled' : ''}></div>
-              ${isViewer()?'' : `
-                  <button id="generate-recap-btn" class="btn btn-primary">Tampilkan Rekap</button>
-                  <button id="fix-stuck-data-btn" class="btn btn-danger" data-action="fix-stuck-attendance">
-                      <span class="material-symbols-outlined">build_circle</span> Perbaiki Data
-                  </button>
-              `}
-          </div>
-      </div>
-              <div id="recap-actions-container" class="card card-pad" style="margin-top: 1.5rem; display: none;">
-           <div class="rekap-actions" style="grid-template-columns: 1fr 1fr;">
-               <button id="generate-selected-btn" class="btn" data-action="generate-selected-salary-bill" disabled>Buat Tagihan (Terpilih)</button>
-               <button id="generate-all-btn" class="btn btn-primary" data-action="generate-all-salary-bill">Buat Tagihan (Semua)</button>
-           </div>
-      </div>
-      <div id="recap-results-container" style="margin-top: 1.5rem;">
-           <p class="empty-state-small">Pilih rentang tanggal dan klik "Tampilkan Rekap" untuk melihat hasilnya.</p>
-      </div>
-  `;
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+    return `
+        <div class="card card-pad">
+            <h5 class="section-title-owner" style="margin-top:0;">Pilih Periode Rekap</h5>
+            <div class="recap-filters">
+                <div class="form-group"><label>Tanggal Mulai</label><input type="date" id="recap-start-date" value="${firstDayOfMonth}" ${isViewer()?'disabled' : ''}></div>
+                <div class="form-group"><label>Tanggal Selesai</label><input type="date" id="recap-end-date" value="${todayStr}" ${isViewer()?'disabled' : ''}></div>
+                ${isViewer()?'' : `
+                    <button id="generate-recap-btn" class="btn btn-primary">Tampilkan Rekap</button>
+                    
+                    <button id="fix-stuck-data-btn" class="btn btn-danger" data-action="fix-stuck-attendance">
+                        <span class="material-symbols-outlined">build_circle</span> Hitung Ulang & Perbaiki
+                    </button>
+                `}
+            </div>
+        </div>
+                <div id="recap-actions-container" class="card card-pad" style="margin-top: 1.5rem; display: none;">
+             <div class="rekap-actions" style="grid-template-columns: 1fr 1fr;">
+                 <button id="generate-selected-btn" class="btn" data-action="generate-selected-salary-bill" disabled>Buat Tagihan (Terpilih)</button>
+                 <button id="generate-all-btn" class="btn btn-primary" data-action="generate-all-salary-bill">Buat Tagihan (Semua)</button>
+             </div>
+        </div>
+        <div id="recap-results-container" style="margin-top: 1.5rem;">
+             <p class="empty-state-small">Pilih rentang tanggal dan klik "Tampilkan Rekap" untuk melihat hasilnya.</p>
+        </div>
+    `;
+  }
+
+  async function handleRecalculateWages() {
+    const startDateStr = $('#recap-start-date').value;
+    const endDateStr = $('#recap-end-date').value;
+
+    if (!startDateStr || !endDateStr) {
+        toast('error', 'Silakan pilih rentang tanggal terlebih dahulu.');
+        return;
+    }
+
+    createModal('confirmUserAction', {
+        message: 'Anda akan menghitung ulang upah untuk semua absensi yang BELUM DIBAYAR dalam periode ini menggunakan tarif terbaru dari master data. Ini akan memperbaiki data lama yang upahnya 0. Lanjutkan?',
+        onConfirm: async () => {
+            toast('syncing', 'Mencari & menghitung ulang upah...');
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            endDate.setHours(23, 59, 59, 999);
+
+            try {
+                await fetchAndCacheData('workers', workersCol, 'workerName');
+
+                const q = query(attendanceRecordsCol,
+                    where('isPaid', '==', false),
+                    where('date', '>=', startDate),
+                    where('date', '<=', endDate)
+                );
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    toast('info', 'Tidak ditemukan absensi yang perlu dihitung ulang.');
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                let updatedCount = 0;
+
+                snapshot.forEach(doc => {
+                    const record = { id: doc.id, ...doc.data() };
+                    const worker = appState.workers.find(w => w.id === record.workerId);
+                    if (!worker) return;
+
+                    // Gunakan logika cerdas yang sama seperti di generateSalaryRecap
+                    let baseWage = 0;
+                    const projectWages = worker.projectWages?.[record.projectId];
+                    if (typeof projectWages === 'object' && projectWages !== null) {
+                        baseWage = projectWages[record.jobRole] || Object.values(projectWages)[0] || 0;
+                    } else if (typeof projectWages === 'number') {
+                        baseWage = projectWages;
+                    }
+                    
+                    let newTotalPay = 0;
+                    if (record.type === 'manual') {
+                        if (record.attendanceStatus === 'full_day') newTotalPay = baseWage;
+                        else if (record.attendanceStatus === 'half_day') newTotalPay = baseWage / 2;
+                    } else if (record.type === 'timestamp') {
+                        const hourlyWage = baseWage / 8;
+                        newTotalPay = ((record.normalHours || 0) * hourlyWage) + ((record.overtimeHours || 0) * hourlyWage * 1.5);
+                    }
+                    
+                    if (Math.round(newTotalPay) !== Math.round(record.totalPay || 0)) {
+                        batch.update(doc.ref, { totalPay: newTotalPay });
+                        updatedCount++;
+                    }
+                });
+
+                if (updatedCount > 0) {
+                    await batch.commit();
+                    toast('success', `${updatedCount} data upah berhasil dikoreksi dan diperbarui!`);
+                    await fetchAndCacheData('attendanceRecords', attendanceRecordsCol, 'date');
+                    generateSalaryRecap(startDate, endDate); // Tampilkan ulang rekap dengan data baru
+                } else {
+                    toast('info', 'Semua data upah sudah sesuai dengan tarif terbaru.');
+                }
+
+            } catch (error) {
+                console.error("Gagal menghitung ulang upah:", error);
+                toast('error', 'Terjadi kesalahan saat proses hitung ulang.');
+            }
+        }
+    });
 }
-// GANTI FUNGSI LAMA ANDA DENGAN VERSI BARU INI
+
 async function generateSalaryRecap(startDate, endDate) {
     const resultsContainer = $('#recap-results-container');
     const actionsContainer = $('#recap-actions-container');
@@ -6054,7 +6496,6 @@ async function generateSalaryRecap(startDate, endDate) {
 
     toast('syncing', 'Memuat data master & absensi...');
 
-    // 1. Pastikan data master pekerja terbaru sudah dimuat
     await fetchAndCacheData('workers', workersCol, 'workerName');
     
     endDate.setHours(23, 59, 59, 999);
@@ -6074,67 +6515,57 @@ async function generateSalaryRecap(startDate, endDate) {
         return;
     }
     
-    toast('syncing', 'Menghitung ulang upah berdasarkan data terbaru...');
+    toast('syncing', 'Menghitung upah berdasarkan data terbaru...');
     const salaryRecap = new Map();
-    const batch = writeBatch(db);
-    let needsUpdate = false;
 
     snap.forEach(doc => {
         const record = { id: doc.id, ...doc.data() };
         const worker = appState.workers.find(w => w.id === record.workerId);
-        if (!worker) return; // Lewati jika data master pekerja tidak ada
+        if (!worker) return;
 
-        // --- [PERBAIKAN KUNCI DIMULAI DI SINI] ---
-        
-        // 2. Ambil upah harian TERBARU dari master data
-        const currentDailyWage = worker.projectWages?.[record.projectId] || 0;
-        let recalculatedPay = 0;
+        // [PERBAIKAN KUNCI] Logika pencarian upah yang lebih cerdas
+        let baseWage = 0;
+        const projectWages = worker.projectWages?.[record.projectId];
 
-        // 3. Hitung ulang upah berdasarkan tipe absensi
-        if (record.type === 'manual') {
-            if (record.attendanceStatus === 'full_day') {
-                recalculatedPay = currentDailyWage;
-            } else if (record.attendanceStatus === 'half_day') {
-                recalculatedPay = currentDailyWage / 2;
+        if (typeof projectWages === 'object' && projectWages !== null) {
+            // Coba format BARU (multi-peran)
+            baseWage = projectWages[record.jobRole] || 0;
+            // Jika gagal (jobRole tidak ada), coba cari peran 'default'
+            if (baseWage === 0) {
+                const defaultRole = Object.keys(projectWages).find(k => k.toLowerCase().includes('default'));
+                baseWage = projectWages[defaultRole] || 0;
             }
+        } else if (typeof projectWages === 'number') {
+            // Fallback ke format LAMA (satu upah per proyek)
+            baseWage = projectWages;
+        }
+        
+        let finalPay = 0;
+        if (record.type === 'manual') {
+            if (record.attendanceStatus === 'full_day') finalPay = baseWage;
+            else if (record.attendanceStatus === 'half_day') finalPay = baseWage / 2;
         } else if (record.type === 'timestamp') {
-            const hourlyWage = currentDailyWage / 8; // Asumsi 8 jam kerja
+            const hourlyWage = baseWage / 8;
             const normalPay = (record.normalHours || 0) * hourlyWage;
             const overtimePay = (record.overtimeHours || 0) * hourlyWage * 1.5;
-            recalculatedPay = normalPay + overtimePay;
-        }
-
-        // 4. Jika ada perbedaan, siapkan pembaruan untuk database
-        if (Math.round(recalculatedPay) !== Math.round(record.totalPay || 0)) {
-            const recordRef = doc(attendanceRecordsCol, record.id);
-            batch.update(recordRef, { totalPay: recalculatedPay });
-            needsUpdate = true;
-            console.log(`Koreksi upah untuk ${worker.workerName}: ${fmtIDR(record.totalPay)} -> ${fmtIDR(recalculatedPay)}`);
+            finalPay = normalPay + overtimePay;
         }
         
-        // --- [AKHIR PERBAIKAN] ---
-
-        // 5. Gunakan total upah yang BARU untuk penjumlahan
         const workerId = record.workerId;
         if (!salaryRecap.has(workerId)) {
             salaryRecap.set(workerId, {
-                workerName: worker.workerName, // Ambil nama terbaru
+                workerName: worker.workerName,
                 totalPay: 0,
                 recordIds: [],
                 workerId: workerId
             });
         }
         const workerData = salaryRecap.get(workerId);
-        workerData.totalPay += recalculatedPay; // Gunakan hasil hitung ulang
+        workerData.totalPay += finalPay;
         workerData.recordIds.push(record.id);
     });
 
-    if (needsUpdate) {
-        await batch.commit();
-        toast('success', 'Beberapa data upah telah dikoreksi!');
-    } else {
-        hideToast();
-    }
+    hideToast();
 
     const recapData = [...salaryRecap.values()];
     const tableHTML = `
@@ -6646,88 +7077,139 @@ async function _renderFilteredAndPaginatedBills(loadMore = false) {
     const pagination = appState.pagination.bills;
 
     if (pagination.isLoading || (loadMore && !pagination.hasMore)) return;
-
     pagination.isLoading = true;
 
     if (!loadMore) {
         contentContainer.innerHTML = '<div class="loader-container"><div class="spinner"></div></div>';
         appState.tagihan.currentList = [];
     } else {
-        const loader = document.createElement('div');
-        loader.className = 'loader-container';
-        loader.id = 'load-more-spinner';
-        loader.innerHTML = '<div class="spinner"></div>';
-        contentContainer.appendChild(loader);
+        const loaderHTML = '<div class="loader-container" id="load-more-spinner"><div class="spinner"></div></div>';
+        contentContainer.insertAdjacentHTML('beforeend', loaderHTML);
     }
 
     try {
-        const uniqueMap = new Map();
-        (appState.tagihan.fullList || []).forEach(item => {
-            const uniqueKey = item.id || `expense-${item.expenseId}`;
-            if (!uniqueMap.has(uniqueKey)) {
-                uniqueMap.set(uniqueKey, item);
-            }
-        });
-        let filteredBills = Array.from(uniqueMap.values());
-
+        const tabId = $('#main-tabs-container .sub-nav-item.active')?.dataset.tab || 'unpaid';
         const { searchTerm, projectId, supplierId, category, sortBy, sortDirection } = appState.billsFilter;
 
-        if (category !== 'all') filteredBills = filteredBills.filter(item => item.type === category);
-        if (projectId !== 'all') filteredBills = filteredBills.filter(item => item.projectId === projectId);
-        
+        // --- [LOGIKA BARU DIMULAI DI SINI] ---
+
+        // 1. Ambil semua data relevan dari Dexie SEKALI SAJA
+        const allSuppliers = await localDB.suppliers.toArray();
         const allExpenses = await localDB.expenses.where('isDeleted').notEqual(1).toArray();
+        const allBillsInTab = await localDB.bills.where('status').equals(tabId).toArray();
+        
+        const supplierMap = new Map(allSuppliers.map(s => [s.id, s]));
+        const expenseMap = new Map(allExpenses.map(e => [e.id, e]));
+
+        // 2. Gabungkan data tagihan dengan info supplier untuk pencarian global
+        const enrichedBills = allBillsInTab.map(bill => {
+            const expense = expenseMap.get(bill.expenseId);
+            const supplier = expense ? supplierMap.get(expense.supplierId) : null;
+            return {
+                ...bill,
+                supplierName: supplier ? supplier.supplierName : ''
+            };
+        });
+
+        // 3. Terapkan FILTER
+        let filteredBills = enrichedBills;
+        if (category !== 'all') {
+            filteredBills = filteredBills.filter(bill => bill.type === category);
+        }
+        if (projectId !== 'all') {
+            filteredBills = filteredBills.filter(bill => bill.projectId === projectId);
+        }
         if (supplierId !== 'all') {
-            filteredBills = filteredBills.filter(item => {
-                const expense = allExpenses.find(e => e.id === item.expenseId);
+            filteredBills = filteredBills.filter(bill => {
+                const expense = expenseMap.get(bill.expenseId);
                 return expense && expense.supplierId === supplierId;
             });
         }
+
+        // 4. Terapkan PENCARIAN GLOBAL
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            filteredBills = filteredBills.filter(item => (item.description || '').toLowerCase().includes(term));
+            filteredBills = filteredBills.filter(bill => {
+                const remainingAmount = (bill.amount || 0) - (bill.paidAmount || 0);
+                // Cek semua field yang relevan
+                return (
+                    (bill.description || '').toLowerCase().includes(term) ||
+                    (bill.supplierName || '').toLowerCase().includes(term) ||
+                    (bill.type || '').toLowerCase().includes(term) ||
+                    String(bill.amount).includes(term) ||
+                    String(remainingAmount).includes(term)
+                );
+            });
         }
-
+        
+        // 5. Terapkan SORTING
         filteredBills.sort((a, b) => {
-            const valA = (sortBy === 'amount') ? a.amount : _getJSDate(a.dueDate).getTime();
-            const valB = (sortBy === 'amount') ? b.amount : _getJSDate(b.dueDate).getTime();
+            const valA = (sortBy === 'amount') ? (a.amount - (a.paidAmount || 0)) : _getJSDate(a.dueDate).getTime();
+            const valB = (sortBy === 'amount') ? (b.amount - (b.paidAmount || 0)) : _getJSDate(b.dueDate).getTime();
             return sortDirection === 'asc' ? valA - valB : valB - valA;
         });
         
+        // --- AKHIR DARI LOGIKA BARU ---
+
         const offset = loadMore ? appState.tagihan.currentList.length : 0;
         const pageOfBills = filteredBills.slice(offset, offset + PAGE_SIZE);
 
-        const allSuppliers = await localDB.suppliers.toArray();
-        const allWorkers = await localDB.workers.toArray();
-        const newHtml = _getBillsListHTML(pageOfBills, allExpenses, allSuppliers, allWorkers);
+        const newHtml = _getBillsListHTML(pageOfBills, allExpenses, allSuppliers, []);
 
         if (loadMore) {
-            const spinner = $('#load-more-spinner');
-            if (spinner) spinner.remove();
-            contentContainer.querySelector('.dense-list-container').insertAdjacentHTML('beforeend', newHtml);
+            $('#load-more-spinner')?.remove();
+            contentContainer.querySelector('.dense-list-container')?.insertAdjacentHTML('beforeend', newHtml);
         } else {
-            contentContainer.innerHTML = `<div class="dense-list-container">${newHtml}</div>`;
+            $('#scroll-sentinel')?.remove();
+            if (pageOfBills.length > 0) {
+                 contentContainer.innerHTML = `<div class="dense-list-container">${newHtml}</div><div id="scroll-sentinel"></div>`;
+                 _initInfiniteScrollObserver();
+            } else {
+                 contentContainer.innerHTML = _getEmptyStateHTML({ title: 'Tidak Ada Tagihan', desc: 'Tidak ada tagihan yang cocok dengan filter atau pencarian Anda.' });
+            }
         }
         
-        if (loadMore) {
-             appState.tagihan.currentList.push(...pageOfBills);
-        } else {
-             appState.tagihan.currentList = pageOfBills;
-        }
+        appState.tagihan.currentList = loadMore ? [...appState.tagihan.currentList, ...pageOfBills] : pageOfBills;
+        pagination.hasMore = appState.tagihan.currentList.length < filteredBills.length;
         
-        pagination.hasMore = pageOfBills.length === PAGE_SIZE;
-
-        if (!loadMore && pageOfBills.length === 0) {
-            contentContainer.innerHTML = _getEmptyStateHTML({ title: 'Tidak Ada Tagihan', desc: 'Tidak ada tagihan yang cocok dengan filter Anda.' });
+        const sentinel = $('#scroll-sentinel');
+        if (sentinel && !pagination.hasMore) {
+            sentinel.style.display = 'none';
         }
 
     } catch (error) {
-        console.error("Gagal memuat tagihan secara bertahap:", error);
+        console.error("Gagal memuat tagihan:", error);
         contentContainer.innerHTML = _getEmptyStateHTML({ icon: 'error', title: 'Gagal Memuat Data' });
     } finally {
         pagination.isLoading = false;
-        const spinner = $('#load-more-spinner');
-        if (spinner) spinner.remove();
+        $('#load-more-spinner')?.remove();
     }
+}
+
+let infiniteScrollObserver;
+
+function _initInfiniteScrollObserver() {
+    if (infiniteScrollObserver) {
+        infiniteScrollObserver.disconnect();
+    }
+    
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (!sentinel) return;
+
+    const options = {
+        root: null, // amati viewport
+        rootMargin: '0px',
+        threshold: 0.1 // picu saat 10% elemen terlihat
+    };
+
+    infiniteScrollObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            console.log('Sentinel terlihat, memuat lebih banyak tagihan...');
+            _renderFilteredAndPaginatedBills(true); // Panggil fungsi dengan loadMore = true
+        }
+    }, options);
+
+    infiniteScrollObserver.observe(sentinel);
 }
 
 function _initTagihanInteractiveListeners() {
@@ -7348,16 +7830,17 @@ function _createPaymentHistoryHTML(payments) {
 }
 
 async function _showBillsFilterModal(onApply) {
-    const activeTab = $('#main-tabs-container .sub-nav-item.active')?.dataset.tab || 'unpaid';
-    const currentBillList = await localDB.bills.where('status').equals(activeTab).toArray();
+    // [PERBAIKAN] Ambil SEMUA tagihan (lunas & belum lunas) untuk mendapatkan daftar supplier lengkap
+    const allBillsEver = await localDB.bills.toArray();
     const allExpenses = await localDB.expenses.where('isDeleted').notEqual(1).toArray();
-    
-    // [REVISI] Ambil data supplier terbaru langsung dari localDB
     const allSuppliers = await localDB.suppliers.toArray();
 
+    const expenseMap = new Map(allExpenses.map(e => [e.id, e]));
+    
+    // Dapatkan semua ID supplier yang pernah memiliki tagihan
     const relevantSupplierIds = new Set();
-    currentBillList.forEach(bill => {
-        const expense = allExpenses.find(e => e.id === bill.expenseId);
+    allBillsEver.forEach(bill => {
+        const expense = expenseMap.get(bill.expenseId);
         if (expense && expense.supplierId) {
             relevantSupplierIds.add(expense.supplierId);
         }
@@ -7365,8 +7848,9 @@ async function _showBillsFilterModal(onApply) {
 
     const projectOptions = [{ value: 'all', text: 'Semua Proyek' }, ...appState.projects.map(p => ({ value: p.id, text: p.projectName }))];
     
+    // Buat opsi dari supplier yang relevan
     const supplierOptions = [{ value: 'all', text: 'Semua Supplier' }, 
-        ...allSuppliers // <-- Gunakan data yang baru diambil
+        ...allSuppliers
             .filter(s => relevantSupplierIds.has(s.id))
             .map(s => ({ value: s.id, text: s.supplierName }))
     ];
@@ -7381,22 +7865,24 @@ async function _showBillsFilterModal(onApply) {
             </div>
         </form>
     `;
-    createModal('dataDetail', { title: 'Filter Tagihan', content });
-    _initCustomSelects($('#dataDetail-modal'));
+    const modal = createModal('dataDetail', { title: 'Filter Tagihan', content });
+    
+    // Inisialisasi dropdown kustom setelah modal dibuat
+    _initCustomSelects(modal);
 
-    $('#bills-filter-form').addEventListener('submit', (e) => {
+    $('#bills-filter-form', modal).addEventListener('submit', (e) => {
         e.preventDefault();
-        appState.billsFilter.projectId = $('#filter-project-id').value;
-        appState.billsFilter.supplierId = $('#filter-supplier-id').value;
+        appState.billsFilter.projectId = $('#filter-project-id', modal).value;
+        appState.billsFilter.supplierId = $('#filter-supplier-id', modal).value;
         onApply();
-        closeModal($('#dataDetail-modal'));
+        closeModal(modal);
     });
 
-    $('#reset-filter-btn').addEventListener('click', () => {
+    $('#reset-filter-btn', modal).addEventListener('click', () => {
         appState.billsFilter.projectId = 'all';
         appState.billsFilter.supplierId = 'all';
         onApply();
-        closeModal($('#dataDetail-modal'));
+        closeModal(modal);
     });
 }
 
@@ -9205,12 +9691,22 @@ async function _handleDownloadReport(format, reportType) { // async tetap dibutu
 }
 
 async function _prepareUpahPekerjaDataForPdf() {
-  const startDate = new Date($('#report-start-date').value);
-  const endDate = new Date($('#report-end-date').value);
+  const startDateValue = $('#report-start-date')?.value;
+  const endDateValue = $('#report-end-date')?.value;
+
+  if (!startDateValue || !endDateValue) {
+      toast('error', 'Harap tentukan rentang tanggal untuk laporan ini.');
+      return null;
+  }
+
+  const startDate = new Date(startDateValue);
+  const endDate = new Date(endDateValue);
   endDate.setHours(23, 59, 59, 999);
+
   await Promise.all([fetchAndCacheData('workers', workersCol, 'workerName'), fetchAndCacheData('projects', projectsCol, 'projectName')]);
 
   const q = query(attendanceRecordsCol, where('date', '>=', startDate), where('date', '<=', endDate), where('status', '==', 'completed'), orderBy('date', 'asc'));
+  
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const bodyRows = snap.docs.map(doc => {
@@ -10232,11 +10728,11 @@ function _attachStaffFormListeners(modal) {
     toggleFields();
 }
 // --- SUB-SEKSI 3.7: FUNGSI CRUD (CREATE, READ, UPDATE, DELETE) ---
+// GANTI SELURUH FUNGSI INI DI script.js
 async function handleManageMasterData(type, options = {}) {
     const config = masterDataConfig[type];
     if (!config) return;
 
-    // Ambil callback onSelect dari options jika ada (untuk mode pemilih)
     const onSelect = options.onSelect;
 
     await Promise.all([
@@ -10247,8 +10743,6 @@ async function handleManageMasterData(type, options = {}) {
 
     const getListItemContent = (item, type) => {
         let content = `<span>${item[config.nameField]}</span>`;
-
-        // [LOGIKA BARU] Tampilkan badge satuan untuk material
         if (type === 'materials' && item.unit) {
             content += `<span class="category-badge category-internal">${item.unit}</span>`;
         }
@@ -10263,44 +10757,34 @@ async function handleManageMasterData(type, options = {}) {
     };
 
     const listHTML = appState[config.stateKey].map(item => `
-            <div class="master-data-item" data-id="${item.id}" data-type="${type}" ${onSelect?'data-action="select-item" style="cursor: pointer;"' : ''}>
-                ${getListItemContent(item, type)}
-                <div class="master-data-item-actions">
-                    ${!onSelect?`
-                        <button class="btn-icon" data-action="edit-master-item"><span class="material-symbols-outlined">edit</span></button>
-                        <button class="btn-icon btn-icon-danger" data-action="delete-master-item"><span class="material-symbols-outlined">delete</span></button>
-                    ` : ''}
-                </div>
+        <div class="master-data-item" data-id="${item.id}" data-type="${type}" ${onSelect ? 'data-action="select-item" style="cursor: pointer;"' : ''}>
+            ${getListItemContent(item, type)}
+            <div class="master-data-item-actions">
+                ${!onSelect ? `
+                    <button class="btn-icon" data-action="edit-master-item"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="btn-icon btn-icon-danger" data-action="delete-master-item"><span class="material-symbols-outlined">delete</span></button>
+                ` : ''}
             </div>
-        `).join('');
+        </div>
+    `).join('');
 
-    let formFieldsHTML = `
-            <div class="form-group">
-               <label>Nama ${config.title}</label>
-               <input type="text" name="itemName" placeholder="Masukkan nama..." required>
-            </div>
-        `;
+    let formFieldsHTML = `<div class="form-group">
+                             <label>Nama ${config.title}</label>
+                             <input type="text" name="itemName" placeholder="Masukkan nama..." required>
+                          </div>`;
 
-    // [LOGIKA BARU] Tambahkan form input 'Satuan' jika tipenya materials
     if (type === 'materials') {
         formFieldsHTML += `
-                <div class="form-group">
-                   <label>Satuan (mis. Pcs, Kg, m�)</label>
-                   <input type="text" name="itemUnit" placeholder="Masukkan satuan..." required>
-                </div>
-            `;
-    }
-    if (type === 'staff') {
-        const paymentTypeOptions = [{
-            value: 'fixed_monthly',
-            text: 'Gaji Bulanan Tetap'
-        }, {
-            value: 'per_termin',
-            text: 'Fee per Termin (%)'
-        }, {
-            value: 'fixed_per_termin',
-            text: 'Fee Tetap per Termin'
-        }];
+            <div class="form-group">
+                <label>Satuan (mis. Pcs, Kg, m³)</label>
+                <input type="text" name="itemUnit" placeholder="Masukkan satuan..." required>
+            </div>`;
+    } else if (type === 'staff') {
+        const paymentTypeOptions = [
+            { value: 'fixed_monthly', text: 'Gaji Bulanan Tetap' },
+            { value: 'per_termin', text: 'Fee per Termin (%)' },
+            { value: 'fixed_per_termin', text: 'Fee Tetap per Termin' }
+        ];
         formFieldsHTML += `
             ${createMasterDataSelect('paymentType', 'Tipe Pembayaran', paymentTypeOptions, 'fixed_monthly')}
             <div class="form-group" id="staff-salary-group">
@@ -10316,28 +10800,18 @@ async function handleManageMasterData(type, options = {}) {
                 <input type="text" inputmode="numeric" name="feeAmount" placeholder="mis. 10.000.000">
             </div>
         `;
-    }
-    if (type === 'suppliers') {
-        const categoryOptions = [{
-            value: 'Operasional',
-            text: 'Operasional'
-        }, {
-            value: 'Material',
-            text: 'Material'
-        }, {
-            value: 'Lainnya',
-            text: 'Lainnya'
-        }, ];
+    } else if (type === 'suppliers') {
+        const categoryOptions = [
+            { value: 'Operasional', text: 'Operasional' },
+            { value: 'Material', text: 'Material' },
+            { value: 'Lainnya', text: 'Lainnya' },
+        ];
         formFieldsHTML += createMasterDataSelect('itemCategory', 'Kategori Supplier', categoryOptions);
-    }
-    if (type === 'projects') {
-        const projectTypeOptions = [{
-            value: 'main_income',
-            text: 'Pemasukan Utama'
-        }, {
-            value: 'internal_expense',
-            text: 'Biaya Internal (Laba Bersih)'
-        }];
+    } else if (type === 'projects') {
+        const projectTypeOptions = [
+            { value: 'main_income', text: 'Pemasukan Utama' },
+            { value: 'internal_expense', text: 'Biaya Internal (Laba Bersih)' }
+        ];
         formFieldsHTML += `
             <div class="form-group">
                 <label>Anggaran Proyek</label>
@@ -10345,56 +10819,58 @@ async function handleManageMasterData(type, options = {}) {
             </div>
             ${createMasterDataSelect('projectType', 'Jenis Proyek', projectTypeOptions, 'main_income')}
         `;
-    }
-    if (type === 'workers') {
-        const professionOptions = appState.professions.map(p => ({
-            value: p.id,
-            text: p.professionName
-        }));
+    } else if (type === 'workers') {
+        const professionOptions = appState.professions.map(p => ({ value: p.id, text: p.professionName }));
+        const statusOptions = [{ value: 'active', text: 'Aktif' }, { value: 'inactive', text: 'Tidak Aktif' }];
+        
         const projectFieldsHTML = appState.projects.map(p => `
-            <div class="form-group">
-                <label>Upah Harian - ${p.projectName}</label>
-                <input type="text" inputmode="numeric" name="project_wage_${p.id}" placeholder="mis. 150.000">
-            </div>
+            <fieldset id="project-wage-group-${p.id}" class="project-wage-group">
+                <legend>Upah Harian - ${p.projectName}</legend>
+                <div class="role-wage-list"></div>
+                <button type="button" class="btn btn-secondary btn-sm" data-action="add-role-wage-row" data-project-id="${p.id}">
+                    <span class="material-symbols-outlined">add</span> Tambah Peran/Upah
+                </button>
+            </fieldset>
         `).join('');
-        const statusOptions = [{
-            value: 'active',
-            text: 'Aktif'
-        }, {
-            value: 'inactive',
-            text: 'Tidak Aktif'
-        }];
-        formFieldsHTML += `
+
+        // Tulis ulang formFieldsHTML secara keseluruhan untuk workers
+        formFieldsHTML = `
+            <div class="form-group">
+               <label>Nama ${config.title}</label>
+               <input type="text" name="itemName" placeholder="Masukkan nama..." required>
+            </div>
             ${createMasterDataSelect('professionId', 'Profesi', professionOptions, '', 'professions')}
             ${createMasterDataSelect('workerStatus', 'Status', statusOptions, 'active')}
             <h5 class="invoice-section-title">Upah Harian per Proyek</h5>
             ${projectFieldsHTML || '<p class="empty-state-small">Belum ada proyek. Tambahkan proyek terlebih dahulu.</p>'}
         `;
     }
+    
     const content = `
         <div class="master-data-manager" data-type="${type}">
-            <form id="add-master-item-form" data-type="${type}" data-async="true" method="POST" data-endpoint="/api/master/${type}" data-success-msg="${config.title} ditambahkan">
+            <form id="add-master-item-form" data-type="${type}">
                 ${formFieldsHTML}
                 <button type="submit" class="btn btn-primary">Tambah</button>
             </form>
             <div class="master-data-list">
-                ${appState[config.stateKey].length > 0?listHTML : '<p class="empty-state-small">Belum ada data.</p>'}
+                ${appState[config.stateKey].length > 0 ? listHTML : '<p class="empty-state-small">Belum ada data.</p>'}
             </div>
         </div>
     `;
+
     const modalEl = createModal('manageMaster', {
-        title: onSelect?`Pilih ${config.title}` : `Kelola ${config.title}`,
+        title: onSelect ? `Pilih ${config.title}` : `Kelola ${config.title}`,
         content,
         onClose: () => {
-            if (document.querySelectorAll('#modal-container .modal-bg').length > 1) {
-                return;
-            }
+            if (document.querySelectorAll('#modal-container .modal-bg').length > 1) return;
             const page = appState.activePage;
-            if (page === 'pemasukan') renderPemasukanPage();
-            else if (page === 'pengeluaran') renderPengeluaranPage();
-            else if (page === 'absensi') renderAbsensiPage();
+            if (['pemasukan', 'pengeluaran', 'absensi'].includes(page)) {
+                const renderFunc = { pemasukan: renderPemasukanPage, pengeluaran: renderPengeluaranPage, absensi: renderAbsensiPage };
+                renderFunc[page]();
+            }
         }
     });
+    
     if (onSelect && modalEl) {
         modalEl.querySelectorAll('[data-action="select-item"]').forEach(itemEl => {
             itemEl.addEventListener('click', () => {
@@ -10407,12 +10883,36 @@ async function handleManageMasterData(type, options = {}) {
             });
         });
     }
-    if (type === 'staff' && modalEl) {
-        _attachStaffFormListeners(modalEl);
-        $('input[name="feeAmount"]', modalEl)?.addEventListener('input', _formatNumberInput);
-        $('input[name="salary"]', modalEl)?.addEventListener('input', _formatNumberInput);
+
+    // Pasang listener spesifik untuk setiap tipe form
+    if (modalEl) {
+        _initCustomSelects(modalEl); // Inisialisasi semua dropdown kustom
+
+        if (type === 'staff') {
+            _attachStaffFormListeners(modalEl);
+            modalEl.querySelectorAll('input[inputmode="numeric"]').forEach(inp => inp.addEventListener('input', _formatNumberInput));
+        } else if (type === 'workers') {
+            modalEl.addEventListener('click', (e) => {
+                const button = e.target.closest('[data-action="add-role-wage-row"]');
+                if (!button) return;
+                
+                const projectId = button.dataset.projectId;
+                const listContainer = modalEl.querySelector(`#project-wage-group-${projectId} .role-wage-list`);
+                const newRow = document.createElement('div');
+                newRow.className = 'role-wage-row';
+                newRow.innerHTML = `
+                    <input type="text" name="role_name" placeholder="Nama Peran (mis. Tukang)">
+                    <input type="text" name="role_wage" inputmode="numeric" placeholder="Nominal Upah">
+                    <button type="button" class="btn-icon btn-icon-danger remove-role-btn"><span class="material-symbols-outlined">delete</span></button>
+                `;
+                listContainer.appendChild(newRow);
+                newRow.querySelector('input[name="role_wage"]').addEventListener('input', _formatNumberInput);
+                newRow.querySelector('.remove-role-btn').addEventListener('click', () => newRow.remove());
+            });
+        }
     }
 }
+
 async function handleAddMasterItem(form) {
     const type = form.dataset.type;
     const config = masterDataConfig[type];
@@ -10434,15 +10934,6 @@ async function handleAddMasterItem(form) {
         dataToAdd.projectType = form.elements.projectType.value;
         dataToAdd.budget = parseFormattedNumber(form.elements.budget.value);
     }
-    if (type === 'workers') {
-        dataToAdd.professionId = form.elements.professionId.value;
-        dataToAdd.status = form.elements.workerStatus.value;
-        dataToAdd.projectWages = {};
-        appState.projects.forEach(p => {
-            const wage = parseFormattedNumber(form.elements[`project_wage_${p.id}`].value);
-            if (wage > 0) dataToAdd.projectWages[p.id] = wage;
-        });
-    }
     if (type === 'materials') {
         dataToAdd.unit = form.elements.unit.value.trim();
         dataToAdd.reorderPoint = Number(form.elements.reorderPoint.value) || 0;
@@ -10450,7 +10941,33 @@ async function handleAddMasterItem(form) {
         dataToAdd.lastPrice = 0;
         dataToAdd.usageCount = 0;
     }
-    toast('syncing', `Menambah ${config.title}...`);
+
+    if (type === 'workers') {
+        dataToAdd.professionId = form.elements.professionId.value;
+        dataToAdd.status = form.elements.workerStatus.value;
+
+        // [KODE BARU] Logika untuk membaca multi-peran/upah dari form
+        const projectWages = {};
+        appState.projects.forEach(p => {
+            const projectWageGroup = form.querySelector(`#project-wage-group-${p.id}`);
+            if (projectWageGroup) {
+                const roles = {};
+                projectWageGroup.querySelectorAll('.role-wage-row').forEach(row => {
+                    const roleName = row.querySelector('input[name="role_name"]').value.trim();
+                    const roleWage = parseFormattedNumber(row.querySelector('input[name="role_wage"]').value);
+                    if (roleName && roleWage > 0) {
+                        roles[roleName] = roleWage;
+                    }
+                });
+                if (Object.keys(roles).length > 0) {
+                    projectWages[p.id] = roles;
+                }
+            }
+        });
+    }
+        dataToAdd.projectWages = projectWages;
+        
+        toast('syncing', `Menambah ${config.title}...`);
     try {
         const newDocRef = doc(config.collection);
         if (type === 'projects' && dataToAdd.projectType === 'main_income') {
@@ -10482,6 +10999,7 @@ async function handleAddMasterItem(form) {
         console.error(error);
     }
 }
+// GANTI SELURUH FUNGSI INI DI script.js
 function handleEditMasterItem(id, type) {
     const config = masterDataConfig[type];
     if (!config) return;
@@ -10490,83 +11008,144 @@ function handleEditMasterItem(id, type) {
         toast('error', 'Data tidak ditemukan untuk diedit.');
         return;
     }
+
     let formFieldsHTML = `<div class="form-group"><label>Nama ${config.title}</label><input type="text" name="itemName" value="${item[config.nameField]}" required></div>`;
+
     if (type === 'staff') {
-        const paymentTypeOptions = [{
-            value: 'fixed_monthly',
-            text: 'Gaji Bulanan Tetap'
-        }, {
-            value: 'per_termin',
-            text: 'Fee per Termin (%)'
-        }, {
-            value: 'fixed_per_termin',
-            text: 'Fee Tetap per Termin'
-        }];
-        formFieldsHTML += `${createMasterDataSelect('paymentType', 'Tipe Pembayaran', paymentTypeOptions, item.paymentType || 'fixed_monthly')}
-            <div class="form-group" id="staff-salary-group"><label>Gaji Bulanan</label><input type="text" inputmode="numeric" name="salary" value="${item.salary?new Intl.NumberFormat('id-ID').format(item.salary) : ''}"></div>
-            <div class="form-group hidden" id="staff-fee-percent-group"><label>Persentase Fee (%)</label><input type="number" name="feePercentage" value="${item.feePercentage || ''}"></div>
-            <div class="form-group hidden" id="staff-fee-amount-group"><label>Jumlah Fee Tetap</label><input type="text" inputmode="numeric" name="feeAmount" value="${item.feeAmount?new Intl.NumberFormat('id-ID').format(item.feeAmount) : ''}"></div>`;
-    }
-    if (type === 'suppliers') {
-        const categoryOptions = [{
-            value: 'Operasional',
-            text: 'Operasional'
-        }, {
-            value: 'Material',
-            text: 'Material'
-        }, {
-            value: 'Lainnya',
-            text: 'Lainnya'
-        }, ];
+        const paymentTypeOptions = [
+            { value: 'fixed_monthly', text: 'Gaji Bulanan Tetap' },
+            { value: 'per_termin', text: 'Fee per Termin (%)' },
+            { value: 'fixed_per_termin', text: 'Fee Tetap per Termin' }
+        ];
+        formFieldsHTML += `
+            ${createMasterDataSelect('paymentType', 'Tipe Pembayaran', paymentTypeOptions, item.paymentType || 'fixed_monthly')}
+            <div class="form-group" id="staff-salary-group">
+                <label>Gaji Bulanan</label>
+                <input type="text" inputmode="numeric" name="salary" value="${item.salary ? new Intl.NumberFormat('id-ID').format(item.salary) : ''}">
+            </div>
+            <div class="form-group hidden" id="staff-fee-percent-group">
+                <label>Persentase Fee (%)</label>
+                <input type="number" name="feePercentage" value="${item.feePercentage || ''}">
+            </div>
+            <div class="form-group hidden" id="staff-fee-amount-group">
+                <label>Jumlah Fee Tetap</label>
+                <input type="text" inputmode="numeric" name="feeAmount" value="${item.feeAmount ? new Intl.NumberFormat('id-ID').format(item.feeAmount) : ''}">
+            </div>
+        `;
+    } else if (type === 'suppliers') {
+        const categoryOptions = [
+            { value: 'Operasional', text: 'Operasional' },
+            { value: 'Material', text: 'Material' },
+            { value: 'Lainnya', text: 'Lainnya' },
+        ];
         formFieldsHTML += createMasterDataSelect('itemCategory', 'Kategori Supplier', categoryOptions, item.category || 'Operasional');
-    }
-    if (type === 'projects') {
-        const projectTypeOptions = [{
-            value: 'main_income',
-            text: 'Pemasukan Utama'
-        }, {
-            value: 'internal_expense',
-            text: 'Biaya Internal (Beban)'
-        }];
-        const budget = item.budget?new Intl.NumberFormat('id-ID').format(item.budget) : '';
-        formFieldsHTML += `<div class="form-group"><label>Anggaran Proyek</label><input type="text" inputmode="numeric" name="budget" placeholder="mis. 100.000.000" value="${budget}"></div>${createMasterDataSelect('projectType', 'Jenis Proyek', projectTypeOptions, item.projectType || 'main_income')}`;
-    }
-    if (type === 'workers') {
-        const professionOptions = appState.professions.map(p => ({
-            value: p.id,
-            text: p.professionName
-        }));
+    } else if (type === 'projects') {
+        const projectTypeOptions = [
+            { value: 'main_income', text: 'Pemasukan Utama' },
+            { value: 'internal_expense', text: 'Biaya Internal (Beban)' }
+        ];
+        const budget = item.budget ? new Intl.NumberFormat('id-ID').format(item.budget) : '';
+        formFieldsHTML += `
+            <div class="form-group">
+                <label>Anggaran Proyek</label>
+                <input type="text" inputmode="numeric" name="budget" placeholder="mis. 100.000.000" value="${budget}">
+            </div>
+            ${createMasterDataSelect('projectType', 'Jenis Proyek', projectTypeOptions, item.projectType || 'main_income')}
+        `;
+    } else if (type === 'workers') {
+        const professionOptions = appState.professions.map(p => ({ value: p.id, text: p.professionName }));
+        const statusOptions = [{ value: 'active', text: 'Aktif' }, { value: 'inactive', text: 'Tidak Aktif' }];
+
         const projectFieldsHTML = appState.projects.map(p => {
-            const currentWage = item.projectWages?.[p.id] || '';
-            return `<div class="form-group"><label>Upah Harian - ${p.projectName}</label><input type="text" inputmode="numeric" name="project_wage_${p.id}" value="${currentWage?new Intl.NumberFormat('id-ID').format(currentWage) : ''}" placeholder="mis. 150.000"></div>`;
+            const rolesData = item.projectWages?.[p.id] || {};
+            
+            const existingRowsHTML = Object.entries(rolesData).map(([roleName, roleWage]) => `
+                <div class="role-wage-row">
+                    <input type="text" name="role_name" placeholder="Nama Peran (mis. Tukang)" value="${roleName}">
+                    <input type="text" name="role_wage" inputmode="numeric" placeholder="Nominal Upah" value="${new Intl.NumberFormat('id-ID').format(roleWage)}">
+                    <button type="button" class="btn-icon btn-icon-danger remove-role-btn"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+            `).join('');
+
+            return `
+                <fieldset id="project-wage-group-${p.id}" class="project-wage-group">
+                    <legend>Upah Harian - ${p.projectName}</legend>
+                    <div class="role-wage-list">${existingRowsHTML}</div>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="add-role-wage-row" data-project-id="${p.id}">
+                        <span class="material-symbols-outlined">add</span> Tambah Peran/Upah
+                    </button>
+                </fieldset>
+            `;
         }).join('');
-        const statusOptions = [{
-            value: 'active',
-            text: 'Aktif'
-        }, {
-            value: 'inactive',
-            text: 'Tidak Aktif'
-        }];
-        formFieldsHTML += `${createMasterDataSelect('professionId', 'Profesi', professionOptions, item.professionId || '', 'professions')}${createMasterDataSelect('workerStatus', 'Status', statusOptions, item.status || 'active')}<h5 class="invoice-section-title">Upah Harian per Proyek</h5>${projectFieldsHTML || '<p class="empty-state-small">Belum ada proyek.</p>'}`;
-    }
-    // [PERUBAHAN] Tambahkan input untuk 'Satuan' saat mengedit
-    if (type === 'materials') {
+
+        // Tulis ulang formFieldsHTML secara keseluruhan untuk workers
+        formFieldsHTML = `
+            <div class="form-group">
+               <label>Nama ${config.title}</label>
+               <input type="text" name="itemName" value="${item[config.nameField]}" required>
+            </div>
+            ${createMasterDataSelect('professionId', 'Profesi', professionOptions, item.professionId || '', 'professions')}
+            ${createMasterDataSelect('workerStatus', 'Status', statusOptions, item.status || 'active')}
+            <h5 class="invoice-section-title">Upah Harian per Proyek</h5>
+            ${projectFieldsHTML || '<p class="empty-state-small">Belum ada proyek.</p>'}
+        `;
+    } else if (type === 'materials') {
         formFieldsHTML += `
             <div class="form-group"><label>Satuan</label><input type="text" name="unit" value="${item.unit || ''}" required></div>
             <div class="form-group"><label>Titik Pemesanan Ulang</label><input type="number" name="reorderPoint" value="${item.reorderPoint || 0}" required></div>
         `;
     }
-    const content = `<form id="edit-master-form" data-id="${id}" data-type="${type}" data-async="true" method="PUT" data-endpoint="/api/master/${type}/${id}" data-success-msg="${config.title} diperbarui">${formFieldsHTML}<button type="submit" class="btn btn-primary">Simpan Perubahan</button></form>`;
+
+    const content = `
+        <form id="edit-master-form" data-id="${id}" data-type="${type}">
+            ${formFieldsHTML}
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </form>
+    `;
+
     const modalEl = createModal('editMaster', {
         title: `Edit ${config.title}`,
         content
     });
-    if (type === 'staff' && modalEl) {
-        _attachStaffFormListeners(modalEl);
-        $('input[name="feeAmount"]', modalEl)?.addEventListener('input', _formatNumberInput);
-        $('input[name="salary"]', modalEl)?.addEventListener('input', _formatNumberInput);
+
+    // Pasang listener spesifik untuk setiap tipe form
+    if (modalEl) {
+        _initCustomSelects(modalEl); // Inisialisasi dropdown kustom
+
+        if (type === 'staff') {
+            _attachStaffFormListeners(modalEl);
+            modalEl.querySelectorAll('input[inputmode="numeric"]').forEach(inp => inp.addEventListener('input', _formatNumberInput));
+        } else if (type === 'workers') {
+            // Pasang listener untuk format angka pada input yang sudah ada
+            modalEl.querySelectorAll('input[name="role_wage"]').forEach(inp => inp.addEventListener('input', _formatNumberInput));
+
+            // Pasang listener untuk menambah baris baru
+            modalEl.addEventListener('click', (e) => {
+                const button = e.target.closest('[data-action="add-role-wage-row"]');
+                if (!button) return;
+
+                const projectId = button.dataset.projectId;
+                const listContainer = modalEl.querySelector(`#project-wage-group-${projectId} .role-wage-list`);
+                const newRow = document.createElement('div');
+                newRow.className = 'role-wage-row';
+                newRow.innerHTML = `
+                    <input type="text" name="role_name" placeholder="Nama Peran">
+                    <input type="text" name="role_wage" inputmode="numeric" placeholder="Nominal Upah">
+                    <button type="button" class="btn-icon btn-icon-danger remove-role-btn"><span class="material-symbols-outlined">delete</span></button>
+                `;
+                listContainer.appendChild(newRow);
+                newRow.querySelector('input[name="role_wage"]').addEventListener('input', _formatNumberInput);
+                newRow.querySelector('.remove-role-btn').addEventListener('click', () => newRow.remove());
+            });
+
+            // Pasang listener untuk menghapus baris yang sudah ada
+            modalEl.querySelectorAll('.remove-role-btn').forEach(btn => {
+                btn.addEventListener('click', () => btn.closest('.role-wage-row').remove());
+            });
+        }
     }
 }
+
 async function handleUpdateMasterItem(form) {
     const {
         id,
@@ -10589,19 +11168,35 @@ async function handleUpdateMasterItem(form) {
         dataToUpdate.projectType = form.elements.projectType.value;
         dataToUpdate.budget = parseFormattedNumber(form.elements.budget.value);
     }
-    if (type === 'workers') {
-        dataToUpdate.professionId = form.elements.professionId.value;
-        dataToUpdate.status = form.elements.workerStatus.value;
-        dataToUpdate.projectWages = {};
-        appState.projects.forEach(p => {
-            const wage = parseFormattedNumber(form.elements[`project_wage_${p.id}`].value);
-            if (wage > 0) dataToUpdate.projectWages[p.id] = wage;
-        });
-    }
     if (type === 'materials') {
         dataToUpdate.unit = form.elements.unit.value.trim();
         dataToUpdate.reorderPoint = Number(form.elements.reorderPoint.value) || 0;
     }
+    if (type === 'workers') {
+        dataToUpdate.professionId = form.elements.professionId.value;
+        dataToUpdate.status = form.elements.workerStatus.value;
+        
+        // [KODE BARU] Logika untuk membaca multi-peran/upah dari form
+        const projectWages = {};
+        appState.projects.forEach(p => {
+            const projectWageGroup = form.querySelector(`#project-wage-group-${p.id}`);
+            if (projectWageGroup) {
+                const roles = {};
+                projectWageGroup.querySelectorAll('.role-wage-row').forEach(row => {
+                    const roleName = row.querySelector('input[name="role_name"]').value.trim();
+                    const roleWage = parseFormattedNumber(row.querySelector('input[name="role_wage"]').value);
+                    if (roleName && roleWage > 0) {
+                        roles[roleName] = roleWage;
+                    }
+                });
+                if (Object.keys(roles).length > 0) {
+                    projectWages[p.id] = roles;
+                }
+            }
+        });
+        dataToUpdate.projectWages = projectWages;
+    }
+    
     toast('syncing', `Memperbarui ${config.title} (Lokal)...`);
     try {
         const table = localDB[config.stateKey];
@@ -10812,27 +11407,26 @@ function _attachFormDraftPersistence(form) {
     form.addEventListener('change', handler, true);
     form._clearDraft = () => _clearFormDraft(form);
 }
+
 async function handleEditItem(id, type) {
     let item, formHTML = 'Form tidak tersedia.';
 
-    if (type === 'expense') {
-        await fetchAndCacheData('expenses', expensesCol);
+    // [PERBAIKAN KUNCI] Logika untuk menangani berbagai tipe data sumber
+    if (type === 'bill') {
+        item = appState.bills.find(b => b.id === id);
+        if (item && item.expenseId) {
+            type = 'expense'; // Ubah tipe menjadi 'expense' untuk diedit di form pengeluaran
+            item = appState.expenses.find(e => e.id === item.expenseId);
+        } else if (item && item.type === 'fee') {
+            type = 'fee_bill'; // Gunakan tipe baru 'fee_bill' khusus untuk tagihan fee
+        }
+        // Jika tipe 'gaji', kita tidak menyediakan form edit karena diedit melalui absensi
+    } else if (type === 'expense') {
         item = appState.expenses.find(i => i.id === id);
     } else if (type === 'termin') {
         item = appState.incomes.find(i => i.id === id);
     } else if (type === 'pinjaman') {
         item = appState.fundingSources.find(i => i.id === id);
-    } else if (type === 'bill') {
-        item = appState.bills.find(b => b.id === id);
-        if (item && item.expenseId) {
-            type = 'expense';
-            item = appState.expenses.find(e => e.id === item.expenseId);
-        } else if (item && item.type === 'fee') {
-            type = 'fee_bill';
-        }
-    } else {
-        toast('error', 'Tipe data tidak dikenal.');
-        return;
     }
 
     if (!item) {
@@ -10840,7 +11434,8 @@ async function handleEditItem(id, type) {
         return;
     }
 
-    const date = item.date?.toDate?_getJSDate(item.date).toISOString().slice(0, 10) : _getJSDate(item.createdAt).toISOString().slice(0, 10);
+    // Mengambil tanggal dari item dengan aman
+    const date = item.date?.toDate ? _getJSDate(item.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
 
     if (type === 'termin') {
         const projectOptions = appState.projects.map(p => ({
@@ -10848,13 +11443,13 @@ async function handleEditItem(id, type) {
             text: p.projectName
         }));
         formHTML = `
-                <form id="edit-item-form" data-id="${id}" data-type="${type}" data-async="true" method="PUT" data-endpoint="/api/expenses/${id}" data-success-msg="Data diperbarui">
-                    <div class="form-group"><label>Jumlah</label><input type="text" inputmode="numeric" name="amount" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required></div>
-                    <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
-                    ${createMasterDataSelect('projectId', 'Proyek Terkait', projectOptions, item.projectId, 'projects')}
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </form>
-            `;
+            <form id="edit-item-form" data-id="${id}" data-type="${type}">
+                <div class="form-group"><label>Jumlah</label><input type="text" inputmode="numeric" name="amount" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required></div>
+                <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
+                ${createMasterDataSelect('projectId', 'Proyek Terkait', projectOptions, item.projectId, 'projects')}
+                <button type="submit" class="btn btn-primary">Update</button>
+            </form>
+        `;
     } else if (type === 'pinjaman') {
         const creditorOptions = appState.fundingCreditors.map(c => ({
             value: c.id,
@@ -10868,82 +11463,68 @@ async function handleEditItem(id, type) {
             text: 'Berbunga'
         }];
         formHTML = `
-                <form id="edit-item-form" data-id="${id}" data-type="${type}">
-                    <div class="form-group"><label>Jumlah</label><input type="text" inputmode="numeric" name="totalAmount" value="${new Intl.NumberFormat('id-ID').format(item.totalAmount)}" required></div>
-                    <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
-                    ${createMasterDataSelect('creditorId', 'Kreditur', creditorOptions, item.creditorId, 'creditors')}
-                    ${createMasterDataSelect('interestType', 'Jenis Pinjaman', loanTypeOptions, item.interestType)}
-                    <div class="loan-details ${item.interestType === 'none'?'hidden' : ''}">
-                        <div class="form-group"><label>Suku Bunga (% per bulan)</label><input type="number" name="rate" value="${item.rate || ''}" step="0.01" min="1"></div>
-                        <div class="form-group"><label>Tenor (bulan)</label><input type="number" name="tenor" value="${item.tenor || ''}" min="1"></div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </form>
-            `;
+            <form id="edit-item-form" data-id="${id}" data-type="${type}">
+                <div class="form-group"><label>Jumlah</label><input type="text" inputmode="numeric" name="totalAmount" value="${new Intl.NumberFormat('id-ID').format(item.totalAmount)}" required></div>
+                <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
+                ${createMasterDataSelect('creditorId', 'Kreditur', creditorOptions, item.creditorId, 'creditors')}
+                ${createMasterDataSelect('interestType', 'Jenis Pinjaman', loanTypeOptions, item.interestType)}
+                <div class="loan-details ${item.interestType === 'none' ? 'hidden' : ''}">
+                    <div class="form-group"><label>Suku Bunga (% per bulan)</label><input type="number" name="rate" value="${item.rate || ''}" step="0.01" min="1"></div>
+                    <div class="form-group"><label>Tenor (bulan)</label><input type="number" name="tenor" value="${item.tenor || ''}" min="1"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </form>
+        `;
     } else if (type === 'expense' && item.type === 'material') {
         formHTML = _getEditFormFakturMaterialHTML(item);
     } else if (type === 'expense') {
-        let categoryOptions = [],
-            masterType = '',
-            categoryLabel = '';
+        let categoryOptions = [], masterType = '', categoryLabel = '';
         if (item.type === 'operasional') {
-            categoryOptions = appState.operationalCategories.map(c => ({
-                value: c.id,
-                text: c.categoryName
-            }));
+            categoryOptions = appState.operationalCategories.map(c => ({ value: c.id, text: c.categoryName }));
             masterType = 'op-cats';
             categoryLabel = 'Kategori Operasional';
         } else if (item.type === 'lainnya') {
-            categoryOptions = appState.otherCategories.map(c => ({
-                value: c.id,
-                text: c.categoryName
-            }));
+            categoryOptions = appState.otherCategories.map(c => ({ value: c.id, text: c.categoryName }));
             masterType = 'other-cats';
             categoryLabel = 'Kategori Lainnya';
         }
         formHTML = `
-                <form id="edit-item-form" data-id="${id}" data-type="${type}">
-                     <div class="form-group"><label>Jumlah</label><input type="text" name="amount" inputmode="numeric" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required></div>
-                     <div class="form-group"><label>Deskripsi</label><input type="text" name="description" value="${item.description}" required></div>
-                    ${masterType?createMasterDataSelect('categoryId', categoryLabel, categoryOptions, item.categoryId, masterType) : ''}
-                    <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
-                    <p>Status saat ini: <strong>${item.status === 'paid'?'Lunas' : 'Tagihan'}</strong>. Perubahan status tidak dapat dilakukan di sini.</p>
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </form>
-            `;
+            <form id="edit-item-form" data-id="${id}" data-type="${type}">
+                 <div class="form-group"><label>Jumlah</label><input type="text" name="amount" inputmode="numeric" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required></div>
+                 <div class="form-group"><label>Deskripsi</label><input type="text" name="description" value="${item.description}" required></div>
+                ${masterType ? createMasterDataSelect('categoryId', categoryLabel, categoryOptions, item.categoryId, masterType) : ''}
+                <div class="form-group"><label>Tanggal</label><input type="date" name="date" value="${date}" required></div>
+                <p>Status saat ini: <strong>${item.status === 'paid' ? 'Lunas' : 'Tagihan'}</strong>. Perubahan status tidak dapat dilakukan di sini.</p>
+                <button type="submit" class="btn btn-primary">Update</button>
+            </form>
+        `;
     } else if (type === 'fee_bill') {
         formHTML = `
-                <form id="edit-item-form" data-id="${item.id}" data-type="fee_bill" data-async="true" method="PUT" data-endpoint="/api/bills/${item.id}" data-success-msg="Data diperbarui">
-                    <div class="form-group">
-                        <label>Deskripsi</label>
-                        <input type="text" name="description" value="${item.description}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Jumlah Fee</label>
-                        <input type="text" inputmode="numeric" name="amount" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required>
-                    </div>
-                    <p>Mengedit tagihan ini tidak akan mengubah catatan pemasukan asli.</p>
-                    <button type="submit" class="btn btn-primary">Update Tagihan Fee</button>
-                </form>
-            `;
+            <form id="edit-item-form" data-id="${item.id}" data-type="fee_bill">
+                <div class="form-group">
+                    <label>Deskripsi</label>
+                    <input type="text" name="description" value="${item.description}" required>
+                </div>
+                <div class="form-group">
+                    <label>Jumlah Fee</label>
+                    <input type="text" inputmode="numeric" name="amount" value="${new Intl.NumberFormat('id-ID').format(item.amount)}" required>
+                </div>
+                <p>Mengedit tagihan ini tidak akan mengubah catatan pemasukan asli.</p>
+                <button type="submit" class="btn btn-primary">Update Tagihan Fee</button>
+            </form>
+        `;
     }
 
-    createModal('editItem', {
-        title: `Edit Data`,
-        content: formHTML
-    });
-    if (type === 'expense' && item.type === 'material') {
-        const modalEl = $('#editItem-modal');
-        if (modalEl) {
+    const modalEl = createModal('editItem', { title: `Edit Data`, content: formHTML });
+
+    if (modalEl) {
+        _initCustomSelects(modalEl);
+        modalEl.querySelectorAll('input[inputmode="numeric"]').forEach(input => input.addEventListener('input', _formatNumberInput));
+
+        if (type === 'expense' && item.type === 'material') {
             _initAutocomplete(modalEl);
-
-            $('#add-invoice-item-btn', modalEl).addEventListener('click', () => {
-                _addInvoiceItemRow(modalEl);
-                _initAutocomplete(modalEl); // Aktifkan autocomplete untuk baris yang baru
-            });
-
-            $('#invoice-items-container', modalEl).addEventListener('input', (e) => _handleInvoiceItemChange(e, modalEl));
-
+            $('#add-invoice-item-btn', modalEl)?.addEventListener('click', () => _addInvoiceItemRow(modalEl));
+            $('#invoice-items-container', modalEl)?.addEventListener('input', (e) => _handleInvoiceItemChange(e, modalEl));
             $$('.remove-item-btn', modalEl).forEach(btn => btn.addEventListener('click', (e) => {
                 e.target.closest('.invoice-item-row').remove();
                 _updateInvoiceTotal(modalEl);
@@ -10952,20 +11533,35 @@ async function handleEditItem(id, type) {
     }
 }
 
+// GANTI SELURUH FUNGSI INI DI script.js
+
 async function handleUpdateItem(form) {
     const { id, type } = form.dataset;
-    toast('syncing', 'Memperbarui data di perangkat...');
+    toast('syncing', 'Memperbarui data...');
+    
     try {
-        let table, dataToUpdate = {}, config = { title: 'Data' }, stateKey;
+        let table, dataToUpdate = {}, config = { title: 'Data' };
 
+        // [PERBAIKAN] Menambahkan logika untuk 'termin' dan 'pinjaman'
         switch (type) {
             case 'termin':
-                table = localDB.incomes; stateKey = 'incomes'; config.title = 'Pemasukan Termin';
-                dataToUpdate = { amount: parseFormattedNumber(form.elements.amount.value), date: new Date(form.elements.date.value), projectId: form.elements.projectId.value };
+                table = localDB.incomes; 
+                config.title = 'Pemasukan Termin';
+                dataToUpdate = { 
+                    amount: parseFormattedNumber(form.elements.amount.value), 
+                    date: new Date(form.elements.date.value), 
+                    projectId: form.elements.projectId.value 
+                };
                 break;
             case 'pinjaman':
-                table = localDB.funding_sources; stateKey = 'fundingSources'; config.title = 'Pinjaman';
-                dataToUpdate = { totalAmount: parseFormattedNumber(form.elements.totalAmount.value), date: new Date(form.elements.date.value), creditorId: form.elements.creditorId.value, interestType: form.elements.interestType.value };
+                table = localDB.funding_sources; 
+                config.title = 'Pinjaman';
+                dataToUpdate = { 
+                    totalAmount: parseFormattedNumber(form.elements.totalAmount.value), 
+                    date: new Date(form.elements.date.value), 
+                    creditorId: form.elements.creditorId.value, 
+                    interestType: form.elements.interestType.value 
+                };
                 if (dataToUpdate.interestType === 'interest') {
                     dataToUpdate.rate = Number(form.elements.rate.value);
                     dataToUpdate.tenor = Number(form.elements.tenor.value);
@@ -10973,11 +11569,17 @@ async function handleUpdateItem(form) {
                 }
                 break;
             case 'fee_bill':
-                table = localDB.bills; stateKey = 'bills'; config.title = 'Tagihan Fee';
-                dataToUpdate = { description: form.elements.description.value.trim(), amount: parseFormattedNumber(form.elements.amount.value) };
+                table = localDB.bills; 
+                config.title = 'Tagihan Fee';
+                dataToUpdate = { 
+                    description: form.elements.description.value.trim(), 
+                    amount: parseFormattedNumber(form.elements.amount.value) 
+                };
                 break;
-            case 'expense':
-                table = localDB.expenses; stateKey = 'expenses'; config.title = 'Pengeluaran';
+                
+                case 'expense':
+                table = localDB.expenses; 
+                config.title = 'Pengeluaran';
                 if (form.querySelector('#invoice-items-container')) {
                     const items = [];
                     $$('.invoice-item-row', form).forEach(row => {
@@ -10993,46 +11595,52 @@ async function handleUpdateItem(form) {
                         }
                     });
                     if (items.length === 0) throw new Error('Faktur harus memiliki minimal satu barang.');
-                    dataToUpdate = { projectId: form.elements['project-id'].value, supplierId: form.elements['supplier-id'].value, description: form.elements.description.value, date: new Date(form.elements.date.value), items: items, amount: items.reduce((sum, item) => sum + item.total, 0) };
+                    dataToUpdate = { 
+                        projectId: form.elements['project-id'].value, 
+                        supplierId: form.elements['supplier-id'].value, 
+                        description: form.elements.description.value, 
+                        date: new Date(form.elements.date.value), 
+                        items: items, 
+                        amount: items.reduce((sum, item) => sum + item.total, 0) 
+                    };
                 } else {
-                    dataToUpdate = { amount: parseFormattedNumber(form.elements.amount.value), description: form.elements.description.value, date: new Date(form.elements.date.value), categoryId: form.elements.categoryId?.value || '' };
+                    dataToUpdate = { 
+                        amount: parseFormattedNumber(form.elements.amount.value), 
+                        description: form.elements.description.value, 
+                        date: new Date(form.elements.date.value), 
+                        categoryId: form.elements.categoryId?.value || '' 
+                    };
                 }
                 break;
-            default: throw new Error('Tipe data untuk update tidak dikenal.');
+            default:
+                throw new Error('Tipe data untuk update tidak dikenal.');
         }
 
-        await table.update(id, { ...dataToUpdate, needsSync: 1 });
-
-        if (stateKey && appState[stateKey]) {
-            const itemIndex = appState[stateKey].findIndex(item => item.id === id);
-            if (itemIndex > -1) {
-                appState[stateKey][itemIndex] = { ...appState[stateKey][itemIndex], ...dataToUpdate };
-            }
-        }
-        
-        if (type === 'expense') {
-            const relatedBill = await localDB.bills.where('expenseId').equals(id).first();
-            if (relatedBill) {
-                const billUpdateData = { description: dataToUpdate.description, amount: dataToUpdate.amount, dueDate: dataToUpdate.date, needsSync: 1 };
-                await localDB.bills.update(relatedBill.id, billUpdateData);
-                const billIndex = appState.bills.findIndex(b => b.id === relatedBill.id);
-                if (billIndex > -1) {
-                    appState.bills[billIndex] = { ...appState.bills[billIndex], ...billUpdateData };
-                }
-            }
-        }
+        // Simpan ke database lokal
+        await table.where('id').equals(id).modify({ ...dataToUpdate, needsSync: 1 });
         
         _logActivity(`Memperbarui Data (Lokal): ${config.title}`, { docId: id });
         toast('success', 'Perubahan berhasil disimpan!');
         
-        renderPageContent();
+        // [PERBAIKAN] Perbarui state & UI secara dinamis
+        await loadAllLocalDataToState(); // Muat ulang state dengan data baru
+        
+        // Cari data yang sudah diupdate dari state
+        let updatedItem;
+        if (type === 'termin') updatedItem = appState.incomes.find(i => i.id === id);
+        if (type === 'pinjaman') updatedItem = appState.fundingSources.find(f => f.id === id);
+        
+        if (updatedItem) {
+            updateItemInUI(id, updatedItem); // Panggil fungsi update UI
+        }
+
         syncToServer();
 
     } catch (error) {
         toast('error', `Gagal memperbarui data: ${error.message}`);
         console.error('Update error:', error);
     }
-  }
+}
 
 async function handleDeleteItem(id, type) {
     createModal('confirmDelete', {
@@ -11090,12 +11698,18 @@ async function handleDeleteItem(id, type) {
             }
             toast('syncing', 'Menghapus data...');
             try {
-                // Coba API terlebih dahulu
                 let apiDeleted = false;
                 try {
+                    // [PERBAIKAN] Cek apakah sedang di server dev statis
+                    const isDevStatic = (location.hostname === '127.0.0.1' || location.hostname === 'localhost') && (location.port === '5500' || location.port === '5501');
+                    if (isDevStatic) {
+                        throw new Error('DEV_NO_API'); // Langsung lempar error untuk masuk ke blok catch
+                    }
                     const ep = _mapDeleteEndpoint(type, id);
                     if (ep) { await _apiRequest('DELETE', ep); apiDeleted = true; }
-                } catch (_) {}
+                } catch (_) {
+                }
+                
                 let col, item;
                 if (type === 'termin') {
                     col = incomesCol;
@@ -11124,7 +11738,6 @@ async function handleDeleteItem(id, type) {
                         await batch.commit();
                     }
                 }
-                // Bersihkan sub-koleksi pembayaran sebelum menghapus tagihan (untuk semua tipe) bila bukan lewat API
                 if (!apiDeleted && type === 'bill') {
                     const paymentsSnap = await getDocs(collection(db, 'teams', TEAM_ID, 'bills', id, 'payments'));
                     if (!paymentsSnap.empty) {
@@ -11142,17 +11755,24 @@ async function handleDeleteItem(id, type) {
                     billSnap.docs.forEach(d => batch.delete(d.ref));
                     await batch.commit();
                 }
-
                 _logActivity(`Menghapus Data ${type}`, {
                     docId: id,
-                    description: item?.description || item?.amount
+                    description: item?.description || item?.amount || 'N/A'
                 });
                 toast('success', 'Data berhasil dihapus.');
-
-                if (appState.activePage === 'pemasukan') _rerenderPemasukanList(appState.activeSubPage.get('pemasukan'));
-                if (appState.activePage === 'pengeluaran') renderPengeluaranPage();
-                if (appState.activePage === 'tagihan') renderTagihanPage();
-                if (appState.activePage === 'jurnal') renderJurnalPage();
+                
+                if (type === 'bill') {
+                    appState.bills = appState.bills.filter(b => b.id !== id);
+                } else if (type === 'expense') {
+                    appState.expenses = appState.expenses.filter(e => e.id !== id);
+                } else if (type === 'termin') {
+                    appState.incomes = appState.incomes.filter(i => i.id !== id);
+                } else if (type === 'pinjaman') {
+                    appState.fundingSources = appState.fundingSources.filter(f => f.id !== id);
+                }
+                
+                removeItemFromUI(id);
+            
             } catch (error) {
                 toast('error', 'Gagal menghapus data.');
                 console.error('Delete error:', error);
@@ -11160,6 +11780,7 @@ async function handleDeleteItem(id, type) {
         }
     });
 }
+
 async function handleManageUsers() {
     toast('syncing', 'Memuat data pengguna...');
     try {
@@ -11843,7 +12464,7 @@ function attachEventListeners() {
             'open-sync-queue': handleOpenSyncQueueModal,
             'sync-all-pending': () => syncToServer(),
             'sync-item': () => syncToServer(),
-            'delete-pending-item': () => handleDeletePendingItem(target.dataset),
+            'delete-pending-item': () => handleDeletePendingItem(target),
             'manage-users': handleManageUsers,
             'user-action': () => handleUserAction(target.dataset),
             'edit-pdf-settings': handleEditPdfSettings,
@@ -12039,6 +12660,7 @@ function attachEventListeners() {
                     }));
                 handleGenerateBulkSalaryBill(selectedWorkers, startDate, endDate);
             },
+            'recalculate-wages-btn': () => handleRecalculateWages(), 
             'fix-stuck-attendance': handleFixStuckAttendanceModal,
             'cetak-kwitansi': () => handleCetakKwitansi(id),
             'cetak-kwitansi-individu': () => handleCetakKwitansiIndividu(target.dataset),
