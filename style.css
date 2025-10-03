@@ -1,7 +1,8 @@
 /* =======================================================
- * BanPlex Styles - v9.0 Progressive App
+ * [PERBAIKAN BESAR] BANPLEX STYLES - MOBILE FIRST
+ * File ini sekarang HANYA berisi gaya untuk mobile dan komponen dasar.
  * ======================================================= */
-:root {
+ :root {
   --bg-start: #f0f4f8;
   --bg-end: #d9e2ec;
   --panel: #ffffff;
@@ -22,72 +23,60 @@
   --radius-sm: 10px;
   --radius-lg: 20px;
   --spacing: 1rem;
- --transition-base: 250ms cubic-bezier(.4,0,.2,1);
-  /* Motion system */
-  --motion-duration-fast: 150ms;
-  --motion-duration-base: 250ms;
-  --motion-duration-slow: 400ms;
-  --motion-ease-standard: cubic-bezier(.4, 0, .2, 1);
-  --motion-ease-emphasized: cubic-bezier(.2, 0, 0, 1);
-  /* Keep compatibility */
-  --transition-base: var(--motion-duration-base) var(--motion-ease-standard);
-  --grad-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
-  /* Design tokens for consistency */
-  --font-xs: .75rem;
-  --font-sm: .8rem;
-  --font-md: .9rem;
-  --font-lg: 1rem;
-  --icon-sm: 18px;
-  --icon-md: 22px;
-  --icon-lg: 24px;
 }
 
+/* --- [PERBAIKAN SCROLL] Tata Letak Dasar Mobile --- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { scroll-behavior: smooth }
-
+html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;
   color: var(--text);
   font-size: 14px; 
   line-height: 1.5;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
+  background-color: var(--bg-start); /* Fallback background */
 }
-
+/* Wallpaper background */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url('background-image.png');
+  background-image: url('https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?q=80&w=1887&auto=format&fit=crop');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-
   filter: brightness(100%) contrast(90%);
 }
-
 .dark-theme body::before {
-  background-image: url('dark-background-image.jpg');
+  background-image: url('https://images.unsplash.com/photo-1533134486753-c833f0ed4866?q=80&w=2070&auto=format&fit=crop');
   filter: brightness(60%); 
 }
 
-.material-symbols-outlined { font-size: var(--icon-md); line-height: 1; }
+/* Konten utama di mobile. Padding bawah memberi ruang untuk bottom-nav */
+.page-container {
+  padding: var(--spacing);
+  /* KUNCI: Padding bawah agar konten tidak terpotong oleh navigasi bawah */
+  padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+}
+
+.material-symbols-outlined { font-size: 22px; line-height: 1; }
 
 /* =======================================================
  * [PERBAIKAN SCROLL] Tata Letak Aplikasi Utama
  * ======================================================= */
-
-/* Mencegah body itu sendiri yang di-scroll, agar tidak ada scrollbar ganda */
-html, body { 
-  height: 100%; 
-  overflow: hidden;
-}
-
-/* Fondasi utama aplikasi sebagai flex container */
-#app-shell {
+ html {
+    height: 100%;
+    scroll-behavior: smooth;
+   }
+   
+  body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  #app-shell {
   display: flex;
   height: 100vh; /* Gunakan tinggi viewport penuh */
 }
@@ -449,74 +438,115 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
     height: auto;
   }
   
-  .sub-nav,
-  .category-sub-nav {
-      display: flex;
-      gap: 0.5rem;
-      margin: 0 var(--spacing) 1rem var(--spacing);
-      padding: 0; 
-      overflow-x: auto; 
-      flex-wrap: nowrap; 
-      align-items: center;
-      -webkit-overflow-scrolling: touch; 
-      scrollbar-width: none; 
-      -ms-overflow-style: none;
-  }
+/* =======================================================
+ * [DESAIN FINAL] Navigasi Tab Modular (Pill Style)
+ * ======================================================= */
 
-  /* Two main tabs (equal width, centered) */
-  .sub-nav.two-tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      overflow: visible;
-  }
-  .sub-nav.two-tabs .sub-nav-item { width: 100%; }
-  
-  .sub-nav::-webkit-scrollbar,
-  .category-sub-nav::-webkit-scrollbar {
-      display: none;
-  }
-  
-  .sub-nav-item {
-    flex-shrink: 0; 
-    text-align: center;
-    padding: .3rem 1rem; 
-    border: 1px solid var(--line);
-    background-color: var(--surface-muted);
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--text-dim);
-    border-radius: var(--radius-sm); /* PERUBAHAN DI SINI */
-    transition: all .2s ease-in-out;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
+/* 1. Kontainer untuk grup tab (opsional, untuk hierarki) */
+.tab-group {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin: 0 var(--spacing) 1rem var(--spacing);
+}
+.dark-theme .tab-group {
+  background-color: var(--panel);
 }
 
-  .sub-nav-item .material-symbols-outlined {
-      font-size: 18px;
-  }
-  
-  /* 3. Atur hover state */
-  .sub-nav-item:hover {
-      border-color: color-mix(in srgb, var(--primary) 50%, transparent);
-      color: var(--primary);
-  }
-  
-  /* 4. Atur style untuk tab yang aktif */
-  .sub-nav-item.active {
-      background-color: var(--primary); /* Warna latar utama saat aktif */
-      color: #fff; /* Teks menjadi putih */
-      border-color: var(--primary);
-      box-shadow: var(--shadow-md);
-  }
+/* 2. Style dasar untuk SEMUA nav tab ("Pill Track") */
+.sub-nav,
+.category-sub-nav {
+  display: flex;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin: 0 var(--spacing) 1rem var(--spacing);
+  gap: 4px;
+}
+.dark-theme .sub-nav,
+.dark-theme .category-sub-nav {
+  background-color: var(--panel);
+}
 
-/* Category sub nav inherits pills; add slight tone */
-.category-sub-nav .sub-nav-item { background-color: color-mix(in srgb, var(--surface-muted) 70%, transparent); }
-.dark-theme .category-sub-nav .sub-nav-item { background-color: color-mix(in srgb, var(--surface-muted) 90%, transparent); }
+/* Hapus style "track" dari nav di dalam grup, agar menyatu */
+.tab-group .sub-nav {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 3. Aturan responsif untuk mengisi ruang */
+.sub-nav.two-tabs, .sub-nav.three-tabs {
+  display: grid;
+}
+.sub-nav.two-tabs { grid-template-columns: 1fr 1fr; }
+.sub-nav.three-tabs { grid-template-columns: 1fr 1fr 1fr; }
+
+/* 4. Aturan untuk tab yang bisa di-scroll */
+.sub-nav:not(.two-tabs):not(.three-tabs),
+.category-sub-nav {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.sub-nav:not(.two-tabs):not(.three-tabs)::-webkit-scrollbar,
+.category-sub-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* 5. Style untuk setiap tombol tab */
+.sub-nav-item {
+  flex-shrink: 0;
+  border: none;
+  background-color: transparent;
+  padding: 0.6rem 0.5rem;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-align: center;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* 6. Style untuk tombol TAB UTAMA yang AKTIF ("Pill") */
+.sub-nav:not(.category-sub-nav) .sub-nav-item.active {
+  background-color: var(--panel);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.dark-theme .sub-nav:not(.category-sub-nav) .sub-nav-item.active {
+  background-color: var(--surface-muted);
+}
+
+/* 7. Style untuk SUB-TAB yang AKTIF (Hierarki) */
+.category-sub-nav.sub-nav .sub-nav-item.active {
+  color: var(--primary);
+  font-weight: 600;
+  background-color: transparent;
+  box-shadow: none;
+  position: relative;
+}
+.category-sub-nav.sub-nav .sub-nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background-color: var(--primary);
+  border-radius: 2px;
+}
 
 /* Header right group cleanup */
 .sync-indicator { white-space: nowrap; }
@@ -586,22 +616,27 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 /* Custom Select Dropdown */
 .master-data-select { display: flex; align-items: center; gap: .5rem; }
 .master-data-select .custom-select-wrapper { flex-grow: 1; }
-.custom-select-wrapper {
+/* =======================================================
+ * [PERBAIKAN FINAL V3] BLOK LENGKAP UNTUK CUSTOM DROPDOWN
+ * ======================================================= */
+
+ .custom-select-wrapper {
   position: relative;
-  width: 100%;
 }
 
 .custom-select-wrapper.active {
+  overflow: visible;
   z-index: 20;
-  overflow: visible !important; 
 }
+
 .custom-select-trigger {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid var(--line);
+  padding: .5rem .75rem; /* <-- UBAH BARIS INI */
+  min-height: 40px; /* Tambahkan ini untuk konsistensi */
+  height: 40px;     /* Tambahkan ini untuk konsistensi */  border: 1px solid var(--line);
   border-radius: 8px;
   background-color: var(--surface-muted);
   color: var(--text);
@@ -620,48 +655,27 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-grow: 1;
 }
-
-/* GANTI BLOK CSS INI DI style.css */
-
 .custom-select-options {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  width: 100%;
-  max-height: 200px;
-  
-  /* [PERBAIKAN] Atur warna solid untuk Light Mode */
-  background-color: var(--panel, #ffffff); /* Fallback ke putih jika --panel tidak ada */
-
+  right: 0;
+  width: auto;
+  max-height: 250px;
+  background-color: var(--panel, #ffffff);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-  display: flex;
+  z-index: 9999;
   flex-direction: column;
+  display: none; /* Sembunyikan dropdown secara total */
 }
 
-/* [TAMBAHAN] Aturan spesifik untuk Dark Mode */
-.dark-theme .custom-select-options {
-  background-color: #1e293b; /* Warna solid biru-abu gelap agar menonjol */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* [TAMBAHAN] Perbaikan warna hover di Dark Mode agar lebih terlihat */
-.dark-theme .custom-select-option:hover {
-  background-color: #334155; /* Warna abu-abu yang lebih terang */
-}
 .custom-select-wrapper.active .custom-select-options {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+  display: flex;
 }
-
 .custom-select-search-wrapper {
   display: flex;
   align-items: center;
@@ -695,7 +709,17 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .custom-select-option:hover {
   background-color: var(--surface-muted);
 }
+
 /* Tambahkan di akhir file style.css */
+.dark-theme .custom-select-options {
+  background-color: #1e293b; /* Warna solid biru-abu gelap agar menonjol */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* [TAMBAHAN] Perbaikan warna hover di Dark Mode agar lebih terlihat */
+.dark-theme .custom-select-option:hover {
+  background-color: #334155; /* Warna abu-abu yang lebih terang */
+}
 
 .project-wage-group {
   border: 1px solid var(--line);
@@ -733,6 +757,9 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
   flex-shrink: 0;
   text-align: right;
 }
+.project-wage-group .btn-secondary {
+  margin: 1rem 0 0 0; /* <-- UBAH BARIS INI */
+}
 /* Action Menu (More Options) */
 .actions-menu { position: fixed; background-color: var(--surface-muted); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); overflow: hidden; min-width: 150px; animation: fade-in-sm .15s ease; z-index: 1201; }
 @keyframes fade-in-sm { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
@@ -756,16 +783,48 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .status-badge.positive { color: #15803d; background-color: #dcfce7; }
 .status-badge.negative { color: #b91c1c; background-color: #fee2e2; }
 
-/* Payment & Invoice Modals */
-.payment-summary { padding: 0; margin-bottom: 2rem; background-color: transparent; }
-.payment-summary div { font-size: clamp(.85rem, 2.4vw, 1rem); padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
-.payment-summary strong { font-size: clamp(.9rem, 2.5vw, 1.05rem); }
-.payment-summary .remaining { font-size: clamp(.95rem, 2.6vw, 1.15rem); font-weight: 600; }
-.payment-summary .remaining strong { font-size: clamp(1.05rem, 2.8vw, 1.25rem); font-weight: 700; color: var(--warn); }
+/* Grid untuk ringkasan di bagian atas (Total, Dibayar, Sisa) */
+.detail-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  background-color: var(--surface-muted);
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-item .label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.summary-item .value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.summary-item .value.positive { color: var(--success); }
+.summary-item .value.negative { color: var(--danger); }
+.summary-item .value.warn { color: var(--warn); }
 .loan-calculation-result { margin-top: 1rem; padding: 0.75rem 1rem; background-color: var(--surface-muted); border-radius: var(--radius-sm); text-align: center; font-weight: 500; display: none; }
 .loan-calculation-result .label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.25rem; }
 .loan-calculation-result .amount { font-size: 1.25rem; font-weight: 600; color: var(--primary); }
-.invoice-section-title, .detail-section-title { font-size: 1rem; font-weight: 600; color: var(--text-dim); margin: 2rem 0 1rem 0; padding-bottom: .5rem; border-bottom: 1px solid var(--line); }
+.invoice-section-title, .detail-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 1.5rem 0 0.75rem 0; /* <-- Margin atas dikurangi */
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+}
 #invoice-items-container { display: flex; flex-direction: column; gap: 0.75rem; }
 .readonly-input { background-color: var(--line); cursor: not-allowed; }
 .invoice-item-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background-color: var(--surface-muted); }
@@ -813,9 +872,37 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .add-item-action { text-align: left; margin-top: 0.5rem; }
 .add-item-action .btn-icon { color: var(--primary); }
 .add-item-action .btn-icon .material-symbols-outlined { font-size: 2rem; }
-.invoice-total { display: flex; justify-content: space-between; align-items: center; font-size: clamp(1rem, 2.6vw, 1.2rem); font-weight: 600; margin-top: 1.5rem; padding-top: 1rem; border-top: 2px solid var(--line); }
-.invoice-total strong { color: var(--primary); font-size: clamp(1.05rem, 2.8vw, 1.35rem); }
+/* =======================================================
+ * [IMPROVE-UI/UX] Desain Ulang Blok Total Faktur
+ * ======================================================= */
 
+ .invoice-total {
+  /* 1. Ubah menjadi kartu */
+  background-color: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+
+  /* 2. Atur tata letak (label kiri, jumlah kanan) */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 3. Style untuk label "Total Faktur:" */
+.invoice-total span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+/* 4. Style untuk jumlah nominal (Rp 0) */
+.invoice-total strong {
+  font-size: 1.5rem; /* Dibuat jauh lebih besar */
+  font-weight: 700;
+  color: var(--primary); /* Warna primer agar menonjol */
+}
 /* Detail Modals Layout */
 .detail-modal-header { padding: 1rem 1.25rem; text-align: center; }
 .detail-modal-header h4 { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); margin: 0 0 0.5rem 0; }
@@ -915,48 +1002,6 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
   min-width: 150px;
 }
 
-/* 3. INI BAGIAN UTAMA PERBAIKAN: Tombol status di bagian bawah */
-.attendance-status-selector {
-  display: flex; /* Gunakan flexbox */
-  justify-content: space-between; /* Beri jarak merata antar tombol */
-  gap: 0.5rem; /* Jarak antar tombol */
-  width: 100%; /* Ambil lebar penuh */
-  border-top: 1px solid var(--line); /* Garis pemisah */
-  padding-top: 1rem; /* Jarak dari garis pemisah */
-}
-
-/* 4. Atur setiap pilihan (label) agar mengisi ruang yang tersedia */
-.attendance-status-selector label {
-  flex: 1; /* KUNCI: Membuat setiap label memiliki lebar yang sama */
-  display: flex;
-  align-items: center;
-  justify-content: center; /* Teks di tengah */
-  text-align: center; /* Pastikan teks rata tengah */
-  padding: .5rem .4rem; /* Padding di dalam tombol */
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-
-.attendance-status-selector input[type="radio"] {
-  display: none; /* Sembunyikan radio button asli */
-}
-
-/* 5. Atur gaya saat tombol dipilih */
-.attendance-status-selector input[type="radio"]:checked + span {
-  color: white; /* Warna teks saat aktif */
-  font-weight: 600;
-}
-
-.attendance-status-selector label:has(input:checked) {
-  background-color: var(--primary); /* Warna latar saat aktif */
-  border-color: var(--primary);
-}
-
-.attendance-status-selector label:not(:has(input:checked)) span {
-  color: var(--text-dim); /* Warna teks saat tidak aktif */
-}
 .form-footer-actions {
   margin-top: 1.5rem;
   padding: 1rem var(--spacing); /* Memberi padding yang konsisten */
@@ -1081,6 +1126,11 @@ body.pending-mode .bottom-nav {
 }
 .sidebar {
   display: none; /* [WAJIB] Sembunyikan sidebar di mobile */
+}
+.detail-pane,
+.resizer,
+.detail-pane-footer {
+  display: none;
 }
 }
 /* =======================================================
@@ -2744,184 +2794,6 @@ padding: 0.3rem 0.6rem;
   text-overflow: ellipsis;
 }
 
-/* =======================================================
- * [PERBAIKAN FINAL V2] Aturan Tampilan Desktop Terpadu & Stabil
- * ======================================================= */
- @media (min-width: 768px) {
-  /* --- Pengaturan Dasar Layout --- */
-  #app-shell {
-      display: flex;
-      flex-direction: row;
-      height: 100vh;
-  }
-
-  .bottom-nav {
-      display: none !important; 
-  }
-
-  .content-wrapper {
-      height: 100vh;
-      overflow-y: auto;
-      padding-bottom: 0;
-      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      margin-left: 80px; /* Sesuaikan dengan lebar sidebar ciut */
-  }
-
-  /* --- Logika Sidebar Collapsible yang Sudah Diperbaiki --- */
-
-  /* 1. Pengaturan Sidebar Utama (Saat Ciut) */
-  .sidebar {
-      display: flex;
-      flex-direction: column;
-      width: 80px; /* Lebar saat ciut */
-      background-color: var(--panel);
-      border-right: 1px solid var(--line);
-      padding: 1.5rem 0.75rem;
-      height: 100vh;
-      position: sticky;
-      top: 0;
-      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden;
-  }
-  
-  /* 2. Sembunyikan SEMUA teks saat sidebar ciut */
-  .sidebar .sidebar-app-name,
-  .sidebar .nav-text,
-  .sidebar .profile-text {
-      /* [KUNCI PERBAIKAN #1] Menggunakan display: none agar elemen benar-benar hilang dari layout */
-      display: none;
-      white-space: nowrap;
-  }
-  
-  /* 3. Atur SEMUA item agar kontennya di tengah saat sidebar ciut */
-  .sidebar-header,
-  .sidebar-nav-item,
-  .sidebar-profile-info {
-      display: flex;
-      align-items: center;
-      /* [KUNCI PERBAIKAN #2] Memastikan semua item terpusat secara horizontal */
-      justify-content: center; 
-      width: 100%;
-  }
-
-  .sidebar-logo {
-      width: 36px;
-      height: 36px;
-      flex-shrink: 0;
-  }
-
-  /* 4. Pengaturan Saat Sidebar Melebar (di-hover) */
-  .sidebar:hover {
-      width: 240px; /* Lebar saat melebar */
-  }
-  
-  .sidebar:hover + .content-wrapper {
-      margin-left: 240px; /* Sesuaikan dengan lebar sidebar melebar */
-  }
-
-  /* Tampilkan kembali teks saat sidebar melebar */
-  .sidebar:hover .sidebar-app-name,
-  .sidebar:hover .nav-text,
-  .sidebar:hover .profile-text {
-      display: block; /* atau 'inline' sesuai kebutuhan */
-  }
-
-  /* Atur kembali alignment ke kiri saat sidebar melebar */
-  .sidebar:hover .sidebar-header,
-  .sidebar:hover .sidebar-nav-item,
-  .sidebar:hover .sidebar-profile-info {
-      justify-content: flex-start;
-  }
-
-  /* 5. Pengaturan Detail untuk Jarak dan Tampilan Saat Melebar */
-  .sidebar .sidebar-profile {
-      margin-top: auto;
-  }
-  
-  .sidebar:hover .sidebar-nav-item,
-  .sidebar:hover .sidebar-profile-info {
-      gap: 1rem; /* Beri jarak antara ikon dan teks */
-  }
-}
-/* =======================================================
- * Skeleton Loader Styles
- * ======================================================= */
-
- .skeleton-wrapper {
-  padding: var(--spacing);
-}
-
-.skeleton {
-  background-color: #e2e8f0;
-  border-radius: 0.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Animasi kilau (shimmer effect) */
-.skeleton::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -150%;
-  width: 150%;
-  height: 100%;
-  background-image: linear-gradient(90deg, 
-      rgba(255, 255, 255, 0) 0, 
-      rgba(255, 255, 255, 0.3) 50%, 
-      rgba(255, 255, 255, 0) 100%);
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  100% {
-      left: 150%;
-  }
-}
-
-/* Variasi bentuk skeleton */
-.skeleton-card {
-  width: 100%;
-  height: 80px;
-  margin-bottom: 1rem;
-}
-
-.skeleton-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.skeleton-actions {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-}
-
-.skeleton-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius);
-  margin: 0 auto 0.5rem auto;
-}
-
-.skeleton-text {
-  height: 14px;
-  margin-bottom: 0.5rem;
-}
-
-.skeleton-text-sm {
-  height: 12px;
-}
-
-.skeleton-title {
-  height: 24px;
-  width: 40%;
-  margin: 1.5rem 0 1rem 0;
-}
-
 /* GAYA BARU UNTUK WARNA SERAGAM */
 .dashboard-action-item .icon-wrapper {
   /* Gunakan variabel dari tema Anda agar konsisten */
@@ -2968,11 +2840,9 @@ padding: 0.3rem 0.6rem;
   margin-top: 0.5rem; /* Jarak dari angka di atasnya */
 }
 
-/* 3. Atur kembali menjadi 2 kolom HANYA di tampilan desktop */
-@media (min-width: 768px) {
-  .dashboard-balance-grid {
-      grid-template-columns: 1fr 1fr; /* Kembali menjadi 2 kolom di layar lebar */
-  }
+/* Atur agar grid kartu ringkasan menjadi 1 kolom di mobile (Mobile First) */
+.dashboard-balance-grid {
+  grid-template-columns: 1fr;
 }
 
 
@@ -4087,9 +3957,9 @@ body.pending-mode .sidebar {
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
-/* ======================================================= */
-/* [PERBAIKAN UI/UX] Halaman Absensi Manual              */
-/* ======================================================= */
+/* =============================================
+ * [REDESAIN FINAL] Tata Letak Kartu Absensi Manual
+ * ============================================= */
 
 /* [BARU] Memberi jarak antar setiap kartu pekerja */
 #manual-attendance-list-container {
@@ -4098,37 +3968,729 @@ body.pending-mode .sidebar {
   gap: 0.75rem; /* Jarak 12px antar kartu */
 }
 
-/* [DIUBAH] Mengurangi padding agar kartu lebih ramping */
+/* [DIUBAH] Mengurangi padding & gap agar kartu lebih ramping */
 .manual-attendance-item {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;      /* Mengurangi jarak internal vertikal */
+  gap: 0.75rem;      /* Mengurangi jarak internal vertikal */
   padding: 0.85rem 1rem; /* Mengurangi padding vertikal */
 }
 
-/* [KUNCI] Memastikan item rata tengah secara vertikal */
+/* Kode di bawah ini tetap sama seperti sebelumnya, tapi pastikan ada */
 .attendance-card-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center; /* Rata tengah vertikal */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: flex-start;
   gap: 1rem;
 }
 
-.attendance-card-left {
+.worker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   flex-shrink: 0;
 }
 
-.attendance-card-right {
-  flex-grow: 1;
-  min-width: 150px;
+.worker-name {
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
-/* Mengatur ulang tombol status agar tidak ada margin/padding berlebih */
+.worker-wage {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.worker-role {
+  flex-grow: 1;
+  min-width: 150px;
+  text-align: right;
+}
+
+.worker-role label {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+  display: block;
+}
+
 .attendance-status-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.25rem;
+  width: 100%;
+  background-color: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  margin-top: 0.5rem;
+}
+
+.attendance-status-selector label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.6rem 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+}
+
+.attendance-status-selector input[type="radio"] {
+  display: none;
+}
+
+.attendance-status-selector label:has(input:checked) {
+  background-color: var(--panel) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-color: var(--line) !important;
+}
+
+/* ================================== */
+/* SKELETON LOADER            */
+/* ================================== */
+
+/* Wrapper utama untuk skeleton */
+.skeleton-wrapper {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Elemen dasar skeleton */
+.skeleton {
+  background-color: #e2e8f0; /* Warna dasar abu-abu muda */
+  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden; /* Penting untuk animasi shimmer */
+}
+
+/* Tema gelap untuk skeleton */
+.dark-theme .skeleton {
+  background-color: #334155; /* Warna dasar abu-abu tua */
+}
+
+/* Animasi shimmer (kilau) */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.dark-theme .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+@keyframes shimmer {
+  0% {
+      transform: translateX(-100%);
+  }
+  100% {
+      transform: translateX(100%);
+  }
+}
+
+/* Variasi bentuk skeleton */
+.skeleton-card {
+  height: 120px;
+}
+
+.skeleton-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background-color: #f8fafc;
+  border-radius: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.dark-theme .skeleton-list-item {
+  background-color: #1e293b;
+}
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.skeleton-text-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 40%;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 80%;
+}
+
+.skeleton-text-sm {
+  height: 12px;
+  width: 60%;
+}
+
+.skeleton-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  height: 44px;
+}
+
+.skeleton-toolbar .skeleton-search {
+  flex: 1;
+  height: 100%;
+}
+
+.skeleton-toolbar .skeleton-button {
+  width: 44px;
+  height: 100%;
+}
+
+.modal-footer {
+  display: flex;
+  flex-wrap: wrap; /* Memastikan tombol akan turun jika layar terlalu sempit */
+  justify-content: flex-end; /* Meratakan tombol ke kanan (standar UI) */
+  gap: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 1.5rem; /* Memberi jarak dari konten komentar di atasnya */
+  border-top: 1px solid var(--line);
+}
+
+/* Aturan untuk tombol di dalam footer */
+.modal-footer .btn {
+  flex-grow: 1; /* Di layar kecil (mobile), biarkan tombol memenuhi ruang */
+}
+
+/* =======================================================
+ * Utilitas Global & Scrollbar Tersembunyi
+ * ======================================================= */
+ .hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Terapkan ke kontainer utama mobile */
+.page-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.page-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* ================================== */
+/* SKELETON LOADER            */
+/* ================================== */
+
+/* Wrapper utama untuk skeleton */
+.skeleton-wrapper {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Elemen dasar skeleton */
+.skeleton {
+  background-color: #e2e8f0; /* Warna dasar abu-abu muda */
+  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden; /* Penting untuk animasi shimmer */
+}
+
+/* Tema gelap untuk skeleton */
+.dark-theme .skeleton {
+  background-color: #334155; /* Warna dasar abu-abu tua */
+}
+
+/* Animasi shimmer (kilau) */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.dark-theme .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+@keyframes shimmer {
+  0% {
+      transform: translateX(-100%);
+  }
+  100% {
+      transform: translateX(100%);
+  }
+}
+
+/* Variasi bentuk skeleton */
+.skeleton-card {
+  height: 120px;
+}
+
+.skeleton-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background-color: var(--panel); /* Warna latar belakang kartu */
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.dark-theme .skeleton-list-item {
+  background-color: var(--surface-muted);
+}
+
+.skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.skeleton-text-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-title {
+  height: 24px;
+  width: 40%;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 80%;
+}
+
+.skeleton-text-sm {
+  height: 12px;
+  width: 60%;
+}
+
+.skeleton-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  height: 44px;
+}
+
+.skeleton-toolbar .skeleton-search {
+  flex: 1;
+  height: 100%;
+}
+
+.skeleton-toolbar .skeleton-button {
+  width: 44px;
+  height: 100%;
+}
+
+/* Styling untuk modal aksi item simulasi */
+.simulasi-actions-modal-header {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.simulasi-actions-modal-header h5 {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem 0;
+}
+.simulasi-actions-modal-header p {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+.simulasi-actions-modal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* ===== DESAIN KOMENTAR MOBILE-FIRST FINAL ===== */
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* Jarak antar komentar */
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start; /* Avatar dan bubble sejajar di atas */
+  gap: 0.75rem;
+  max-width: 85%;
+  align-self: flex-start; /* Default: komentar orang lain rata kiri */
+}
+
+.comment-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--line);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.comment-bubble {
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-meta {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.25rem;
+  width: 100%; 
+}
+
+.comment-user {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.comment-meta .btn-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+}
+
+.comment-meta .btn-icon .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap; /* Agar spasi dan baris baru dari user tetap ada */
+  word-wrap: break-word; /* [FIX] Memastikan teks panjang tidak merusak layout */
+  min-width: 0;
+}
+
+.comment-date {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-align: right;
+  margin-top: 0.35rem;
   width: 100%;
-  border-top: 1px solid var(--line);
-  padding-top: 0.85rem; /* Jarak dari garis pemisah */
+}
+
+/* --- Style untuk Komentar Pengguna Saat Ini (Anda) --- */
+
+.comment-item.is-current-user {
+  align-self: flex-end; /* Pindahkan ke kanan */
+  flex-direction: row-reverse; /* Balik urutan avatar dan bubble */
+}
+
+.comment-item.is-current-user .comment-bubble {
+  background-color: var(--primary);
+  color: white;
+}
+
+.comment-item.is-current-user .comment-user,
+.comment-item.is-current-user .comment-date,
+.comment-item.is-current-user .btn-icon {
+  color: white;
+  opacity: 0.9;
+}
+
+.comment-item.is-current-user .comment-user {
+    font-weight: 700; /* Buat nama sendiri sedikit lebih tebal */
+}
+
+/* --- Ekor pada Bubble --- */
+
+.comment-bubble::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+}
+
+/* Ekor untuk komentar orang lain (kiri) */
+.comment-item:not(.is-current-user) .comment-bubble::after {
+  left: -10px;
+  border-right-color: var(--surface-muted);
+}
+.dark-theme .comment-item:not(.is-current-user) .comment-bubble::after {
+  border-right-color: var(--surface-muted);
+}
+
+/* Ekor untuk komentar Anda (kanan) */
+.comment-item.is-current-user .comment-bubble::after {
+  right: -10px;
+  border-left-color: var(--primary);
+}
+
+/* =======================================================
+ * [IMPROVE-UI/UX] Desain Ulang Kartu Halaman Jurnal
+ * ======================================================= */
+
+ .jurnal-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--panel);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Aksen warna di sisi kiri kartu */
+.jurnal-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-image: var(--grad);
+  opacity: 0.7;
+}
+
+.jurnal-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.jurnal-card-main .title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jurnal-card-main .subtitle {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.jurnal-card-secondary {
+  text-align: right;
+  flex-shrink: 0;
+  padding-left: 1rem;
+}
+
+.jurnal-card-secondary .amount {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.jurnal-card-secondary .label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+/* Kartu untuk setiap item dalam daftar (Riwayat Absensi/Pembayaran) */
+.detail-list-item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface-muted);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.detail-list-item-card .item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.detail-list-item-card .item-main .item-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.detail-list-item-card .item-main .item-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.detail-list-item-card .item-secondary {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: right;
+}
+/* =======================================================
+ * [RESPONSIF] Tombol Aksi di Header Form Mobile
+ * ======================================================= */
+ @media (max-width: 599px) {
+  .section-header-flex {
+    /* Di mobile, buat judul dan tombol sejajar */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .section-header-flex .btn span:not(.material-symbols-outlined) {
+    display: none; /* Sembunyikan teks/label tombol */
+  }
+
+  .section-header-flex .btn {
+    padding: 0.5rem; /* Buat padding jadi sama sisi */
+    min-width: 40px; /* Lebar minimum */
+  }
+}
+/* =======================================================
+ * [UI/UX] Panel Konten yang Menyatu
+ * ======================================================= */
+
+ .content-panel {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg); /* Sudut lebih melengkung */
+  box-shadow: var(--shadow-sm);
+  overflow: hidden; /* Agar konten di dalamnya tidak keluar dari sudut melengkung */
+}
+
+/* Hapus margin dan style terpisah dari nav tab di dalam panel */
+.content-panel .sub-nav {
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background-color: transparent; /* Buat transparan agar menyatu */
+  padding: 0.5rem; /* Beri sedikit padding internal */
+}
+
+.dark-theme .content-panel .sub-nav {
+    background-color: transparent;
+}
+
+/* Pastikan konten di bawahnya juga tidak memiliki margin atas */
+.content-panel #sub-page-content {
+  margin-top: 0;
+}
+
+/* =======================================================
+ * [DESAIN ULANG GLOBAL] Komponen Empty State
+ * Ganti semua .empty-state-card dan .empty-state-small dengan ini.
+ * ======================================================= */
+ .empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  margin: 1rem 0;
+  background-color: transparent; /* Default transparan, agar menyatu */
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--text-dim);
+}
+
+/* Style saat .empty-state berada di dalam sebuah kartu atau panel */
+.card > .empty-state,
+.content-panel > .empty-state {
+  margin: 0;
+  border: none;
+  background-color: var(--panel); /* Gunakan warna latar panel */
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+  color: var(--primary);
+  opacity: 0.5;
+  transform: scale(0.9);
+  /* Animasi ikon yang halus */
+  animation: pop-in 0.5s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes pop-in {
+  to {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
+.empty-state-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.empty-state-description {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 350px; /* Batasi panjang baris agar mudah dibaca */
+}
+
+.empty-state-actions {
+  margin-top: 1.5rem;
+}
+
+.empty-state-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Style khusus untuk empty state di dalam list master data */
+.master-data-list > .empty-state {
+  margin-top: 2rem;
+  background-color: var(--surface-muted);
+}
+
+.dark-theme .master-data-list > .empty-state {
+  background-color: var(--panel);
 }
